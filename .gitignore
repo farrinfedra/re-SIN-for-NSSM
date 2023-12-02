@@ -165,3 +165,4 @@ cython_debug/
 *.sf2
 test.ipynb
 .ipynb_checkpoints
+.DS_Store

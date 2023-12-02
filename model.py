@@ -1,4 +1,5 @@
 import torch
 import numpy as np
-import tor
-class DVAE(nn.)
+
+class Encoder(torch.nn.Module):
+    def 
