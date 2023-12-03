@@ -1,10 +1,5 @@
 import torch
 import numpy as np
-<<<<<<< HEAD
-
-class Encoder(torch.nn.Module):
-    def 
-=======
 from torch import nn
 from utils import *
 
@@ -46,4 +41,3 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         pass
->>>>>>> 9a52e30ae5555b3bbab7b2e3b0b8a222ddf74052
