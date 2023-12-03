@@ -5,7 +5,8 @@ from utils import *
 import torch.nn.functional as F
 
 class DVAE(nn.Module):
-    def __init__(self, input_dim=88, 
+    def __init__(self, 
+                    input_dim=88, 
                     hidden_dim=400,
                     hidden_dim_em=100, 
                     hidden_dim_tr=200, 
@@ -29,16 +30,18 @@ class DVAE(nn.Module):
                                 self.output_dim)
 
     def forward(self, x):
-        z = self.encoder(x)
+        z, mus_generator, sigmas_generator = self.encoder(x)
         x_hat, mus, sigmas = self.decoder(z)
-        return x_hat, mus, sigmas
+        return x_hat, mus, sigmas, mus_generator, sigmas_generator
 
 
 class Combiner(nn.Module): #DKS
     def __init__(self, latent_dim, hidden_size):
         super(Combiner, self).__init__()
+        
         self.latent_dim = latent_dim
         self.hidden_size = hidden_size
+        
         # print(f'latent_dim: {latent_dim}, hidden_size: {hidden_size}')
         self.combiner = torch.nn.Linear(self.latent_dim, 
                                         self.hidden_size)
@@ -48,16 +51,19 @@ class Combiner(nn.Module): #DKS
                                             torch.nn.Linear(self.hidden_size, 
                                                             self.latent_dim),
                                             torch.nn.Softplus())
+        self.mus = []
+        self.sigmas = []
         
     def sample(self, mu, sigma):
         return mu + sigma * torch.randn_like(mu)
         
-        
 
     def forward(self, h_right):
         #shape Z: (batch_size, seq_len, latent_dim)
-        Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim) #1, 129, 100
-        
+        b, seq_len, _ = h_right.shape
+        Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim) 
+        mus, sigmas = torch.zeros((b, seq_len, self.latent_dim)), \
+                        torch.ones((b, seq_len, self.latent_dim))
         
         for t in range(1, h_right.shape[1] + 1):
             # print(f'Z[:, t - 1, :].shape: {Z[:, t - 1, :].shape}')
@@ -66,9 +72,13 @@ class Combiner(nn.Module): #DKS
             mu = self.mu_linear(h_combined)
             sigma = self.sigma_linear(h_combined)
             z_t = self.sample(mu, sigma)
+            
+            mus[:, t - 1, :] = mu #TODO: check
+            sigmas[:, t - 1, :] = sigma #TODO: check
             Z[:, t, :] = z_t
             
-        return Z[:, 1:, :]
+            
+        return Z[:, 1:, :], mus, sigmas
             
         
 
