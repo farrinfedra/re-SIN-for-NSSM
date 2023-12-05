@@ -1,0 +1,24 @@
+dataset:
+  download_first: True
+  urls: 
+    - jsb_chorales.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/jsb_chorales.pickle"
+    - piano_midi.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/piano_midi.pickle"
+    - muse_data.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/muse_data.pickle"
+    - nottingham.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/nottingham.pickle"
+
+  path: data/jsb_chorales.pickle
+  split: train
+
+model:
+  input_dim: 88 
+  hidden_dim: 400
+  hidden_dim_em: 100 
+  hidden_dim_tr: 200 
+  latent_dim: 100
+
+train:
+  epochs: 100
+  batch_size: 64
+  proj_name: train_dvae #for wandb
+  wandb_user_name: farrinfedra #for wandb
+

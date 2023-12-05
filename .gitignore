@@ -166,3 +166,5 @@ cython_debug/
 test.ipynb
 .ipynb_checkpoints
 .DS_Store
+data
+*.ipynb

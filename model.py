@@ -30,9 +30,9 @@ class DVAE(nn.Module):
                                 self.output_dim)
 
     def forward(self, x):
-        z, mus_generator, sigmas_generator = self.encoder(x)
-        x_hat, mus, sigmas = self.decoder(z)
-        return x_hat, mus, sigmas, mus_generator, sigmas_generator
+        z, mus_inference, sigmas_inference = self.encoder(x)
+        x_hat, mus_generator, sigmas_generator = self.decoder(z)
+        return x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generator
 
 
 class Combiner(nn.Module): #DKS
