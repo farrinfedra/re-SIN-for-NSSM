@@ -14,7 +14,7 @@ class MusicDataset(Dataset):
         self.max_note = max_note
         self.min_note = min_note
         self.path = config.path
-        self.split = config.split
+        self.split = split
         
         self.data = self.load_process_data()
         self.sequence_lengths = self.data['sequence_lengths']
@@ -92,17 +92,17 @@ class MusicDataset(Dataset):
 
         #pad music in all_music_one_hot with zeros until max_sequence_length with -1
         assert len(all_music_one_hot_list) == len(split_data)
-        max_sequence_length = max(sequence_lengths)
-        split_length = len(split_data)
+        # max_sequence_length = max(sequence_lengths)
+        # split_length = len(split_data)
 
         padded_all_music_one_hot = pad_sequence([torch.tensor(music) for music in all_music_one_hot_list], batch_first=True, padding_value=-1).to(dtype=torch.float32)
 
-        masks = torch.zeros(( split_length, max_sequence_length, self.max_note ))
-        masks = padded_all_music_one_hot != -1
+        # masks = torch.zeros(( split_length, max_sequence_length, self.max_note ))
+        # masks = padded_all_music_one_hot != -1
     
         data_dict['encodings'] = padded_all_music_one_hot
         data_dict['sequence_lengths'] = sequence_lengths
-        data_dict['masks'] = masks.to(dtype=torch.float32)
+        # data_dict['masks'] = masks.to(dtype=torch.float32)
         
         return data_dict
         
@@ -110,7 +110,7 @@ class MusicDataset(Dataset):
         return max(self.sequence_lengths)
     
     def __getitem__(self, index):
-        return self.encodings[index], self.masks[index], self.sequence_lengths[index]
+        return self.encodings[index], self.sequence_lengths[index]
         #encodings dim: (bs, seq_len, 88)
     def __len__(self):
         return len(self.encodings)

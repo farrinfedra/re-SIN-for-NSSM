@@ -6,7 +6,7 @@ dataset:
     - muse_data.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/muse_data.pickle"
     - nottingham.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/nottingham.pickle"
 
-  path: data/jsb_chorales.pickle
+  path: data/jsb_chorales.pickle #current dataset
   split: train
 
 model:
@@ -21,6 +21,11 @@ train:
   batch_size: 64
   num_workers: 4
   lr: 0.001 #TODO: adjust this
+
+  save_model: True
+  save_dir: saved_models
+  save_every: 10
+
   proj_name: train_dvae #for wandb
   wandb_user_name: farrinfedra #for wandb
 
