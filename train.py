@@ -27,6 +27,7 @@ def main():
     dataloader = DataLoader(dataset, 
                             batch_size=config.train.batch_size, 
                             num_workers=config.train.num_workers,
+                            pin_memory=True, #important for speed
                             shuffle=True)
     
     device = torch.device(args.device)

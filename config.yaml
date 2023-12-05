@@ -1,5 +1,5 @@
 dataset:
-  download_first: True
+  download_first: False #only download dataset files if true
   urls: 
     - jsb_chorales.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/jsb_chorales.pickle"
     - piano_midi.pickle: "https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/piano_midi.pickle"
@@ -19,6 +19,8 @@ model:
 train:
   epochs: 100
   batch_size: 64
+  num_workers: 4
+  lr: 0.001 #TODO: adjust this
   proj_name: train_dvae #for wandb
   wandb_user_name: farrinfedra #for wandb
 
