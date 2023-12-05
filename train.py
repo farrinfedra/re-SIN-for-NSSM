@@ -72,7 +72,7 @@ def main():
             
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
-            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat)
+            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths)
             kl_loss = kl_normal(mus_inference, 
                                 sigmas_inference, 
                                 mus_generator, 
@@ -101,7 +101,6 @@ def main():
                             "tr_recon_loss_mini_batch": reconstruction_loss.mean().item(), 
                             "tr_kl_loss_mini_batch": kl_loss.mean().item()})
             
-            break
         
         if args.wandb:
             wandb.log({"epoch": epoch,
@@ -121,7 +120,7 @@ def main():
             encodings = encodings.to(device)
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
-            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat)
+            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths)
             kl_loss = kl_normal(mus_inference, 
                                 sigmas_inference, 
                                 mus_generator, 
@@ -143,9 +142,7 @@ def main():
                             "val_recon_loss_mini_batch": reconstruction_loss.mean().item(), 
                             "val_kl_loss_mini_batch": kl_loss.mean().item()})
             
-            break
-        break
-    # print(f"FINITTOOOOOOOO")
+    print(f"Finished Training for {config.train.epochs} epochs")
     
     if args.wandb:
         wandb.finish()

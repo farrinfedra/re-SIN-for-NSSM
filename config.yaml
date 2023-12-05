@@ -17,14 +17,14 @@ model:
   latent_dim: 100
 
 train:
-  epochs: 100
+  epochs: 2000
   batch_size: 64
   num_workers: 4
-  lr: 0.001 #TODO: adjust this
+  lr: 0.0008 #TODO: adjust this
 
   save_model: True
   save_dir: saved_models
-  save_every: 10
+  save_every: 500
 
   proj_name: train_dvae #for wandb
   wandb_user_name: farrinsofian #for wandb

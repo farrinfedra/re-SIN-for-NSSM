@@ -168,3 +168,6 @@ test.ipynb
 .DS_Store
 data
 *.ipynb
+.vscode
+saved_models
+wandb

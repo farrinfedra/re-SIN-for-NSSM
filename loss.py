@@ -1,5 +1,6 @@
 from einops import repeat, rearrange
 import torch
+import torch.nn.functional as F
 
 def kl_normal(qm, qv, pm, pv, sequence_lengths):
     """
@@ -32,7 +33,7 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
 
 
 
-def log_bernoulli_with_logits(x, logits):
+def log_bernoulli_with_logits(x, logits, sequence_lengths):
     """
     Computes the log probability of a Bernoulli given its logits
 
@@ -43,6 +44,14 @@ def log_bernoulli_with_logits(x, logits):
     Return:
         log_prob: tensor: (batch,): log probability of each sample
     """
-    bce = torch.nn.BCEWithLogitsLoss(reduction='none')
-    log_prob = -bce(input=logits, target=x).sum(-1).sum(-1) #sum over latent_dim and t
-    return log_prob
+    
+    log_prob = F.binary_cross_entropy(input=logits, target=x) 
+    bs, max_sequence_length, _ = x.shape
+    
+    range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs)
+    mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
+    mask = rearrange(mask, 'b s -> b s ()')
+
+    nll = log_prob * mask.float()
+    
+    return nll.sum(-1).sum(-1)
