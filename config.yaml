@@ -27,5 +27,5 @@ train:
   save_every: 10
 
   proj_name: train_dvae #for wandb
-  wandb_user_name: farrinfedra #for wandb
+  wandb_user_name: farrinsofian #for wandb
 

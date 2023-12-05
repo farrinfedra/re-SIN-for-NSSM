@@ -3,6 +3,7 @@ import os
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
+# torch.autograd.set_detect_anomaly(True)
 
 import wandb
 import logging
@@ -14,7 +15,7 @@ from loss import kl_normal, log_bernoulli_with_logits
 def get_arguments():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str, default='config.yaml')
-    argparser.add_argument('--device', type=str, default='mps')
+    argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--seed', type=int, default=42)
     argparser.add_argument('--wandb', action='store_true', default=False)
     
@@ -54,6 +55,7 @@ def main():
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
 
+    setup_logger()
     if args.wandb:
         config_dict = OmegaConf.to_container(config, resolve=True)
         wandb.init(project=config.train.proj_name, 
@@ -77,6 +79,7 @@ def main():
                                 sigmas_generators, 
                                 sequence_lengths)
             
+            
             nelbo = reconstruction_loss.to(device) + kl_loss.to(device)
             nelbo = nelbo.mean()
             epoch_loss += nelbo.item()
@@ -88,15 +91,15 @@ def main():
             logging.info(f'Training Summary:\nEpoch: {epoch}, '
                         f'\nIteration: {i}, '
                         f'\nNELBO: {nelbo.item()}, '
-                        f'\nReconstruction Loss: {reconstruction_loss.item()}, '
-                        f'\nKL Loss: {kl_loss.item()}')
+                        f'\nReconstruction Loss: {reconstruction_loss.mean().item()}, '
+                        f'\nKL Loss: {kl_loss.mean().item()}')
             
             
             if args.wandb:
                 wandb.log({"tr_iteration": i, 
                             "tr_nelbo_mini_batch": nelbo.item(), 
-                            "tr_recon_loss_mini_batch": reconstruction_loss.item(), 
-                            "tr_kl_loss_mini_batch": kl_loss.item()})
+                            "tr_recon_loss_mini_batch": reconstruction_loss.mean().item(), 
+                            "tr_kl_loss_mini_batch": kl_loss.mean().item()})
             
             break
         
@@ -132,16 +135,17 @@ def main():
             logging.info(f'Validation Summary:\nEpoch: {epoch}, '
                         f'\nval_Iteration: {i}, '
                         f'\nval_NELBO: {nelbo.item()}, '
-                        f'\nval_Reconstruction Loss: {reconstruction_loss.item()}, '
-                        f'\nval_KL Loss: {kl_loss.item()}')
+                        f'\nval_Reconstruction Loss: {reconstruction_loss.mean().item()}, '
+                        f'\nval_KL Loss: {kl_loss.mean().item()}')
             if args.wandb:
                 wandb.log({"val_iteration": j, 
                             "val_nelbo_mini_batch": nelbo.item(), 
-                            "val_recon_loss_mini_batch": reconstruction_loss.item(), 
-                            "val_kl_loss_mini_batch": kl_loss.item()})
+                            "val_recon_loss_mini_batch": reconstruction_loss.mean().item(), 
+                            "val_kl_loss_mini_batch": kl_loss.mean().item()})
             
             break
         break
+    # print(f"FINITTOOOOOOOO")
     
     if args.wandb:
         wandb.finish()
