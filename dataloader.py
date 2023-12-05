@@ -19,7 +19,7 @@ class MusicDataset(Dataset):
         self.data = self.load_process_data()
         self.sequence_lengths = self.data['sequence_lengths']
         self.encodings = self.data['encodings']
-        self.masks = self.data['masks']
+        # self.masks = self.data['masks']
     
     def download_dataset(self):
         """

@@ -31,7 +31,7 @@ def main():
     config = OmegaConf.load(args.config)
     
     tr_dataset = MusicDataset(config.dataset, split='train')
-    val_dataset = MusicDataset(config.dataset, split='val')
+    val_dataset = MusicDataset(config.dataset, split='test')
     
     train_loader = DataLoader(tr_dataset, 
                             batch_size=config.train.batch_size, 
@@ -60,7 +60,8 @@ def main():
                    entity=config.train.wandb_user_name,
                    config=config_dict)
         
-    for epoch in range(config.train.num_epochs):
+    logging.info('Training Started')
+    for epoch in range(config.train.epochs):
         epoch_loss = 0
         for i, (encodings, sequence_lengths) in enumerate(train_loader):
             
@@ -76,19 +77,20 @@ def main():
                                 sigmas_generators, 
                                 sequence_lengths)
             
-            nelbo = reconstruction_loss + kl_loss
+            nelbo = reconstruction_loss.to(device) + kl_loss.to(device)
             nelbo = nelbo.mean()
             epoch_loss += nelbo.item()
             
             nelbo.backward()
             optimizer.step()
             
-            logging.info(f'='* 50)
-            logging.info(f'Training Summary:\nEpoch: {epoch},
-                    \nIteration: {i}, 
-                    \nNELBO: {nelbo.item()}, 
-                    \nReconstruction Loss: {reconstruction_loss.item()}, 
-                    \nKL Loss: {kl_loss.item()}')
+            logging.info('=' * 50)
+            logging.info(f'Training Summary:\nEpoch: {epoch}, '
+                        f'\nIteration: {i}, '
+                        f'\nNELBO: {nelbo.item()}, '
+                        f'\nReconstruction Loss: {reconstruction_loss.item()}, '
+                        f'\nKL Loss: {kl_loss.item()}')
+            
             
             if args.wandb:
                 wandb.log({"tr_iteration": i, 
@@ -111,6 +113,7 @@ def main():
 
 
     #validation
+        logging.info('Validation Started....')
         for j, (encodings, sequence_lengths) in enumerate(val_loader):
             encodings = encodings.to(device)
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
@@ -125,12 +128,12 @@ def main():
             nelbo = reconstruction_loss + kl_loss
             nelbo = nelbo.mean()
             
-            logging.info(f'='* 50)
-            logging.info(f'Validation Summary:\nEpoch: {epoch},
-                    \nval_Iteration: {i}, 
-                    \nval_NELBO: {nelbo.item()}, 
-                    \nval_Reconstruction Loss: {reconstruction_loss.item()}, 
-                    \nval_KL Loss: {kl_loss.item()}')
+            logging.info('=' * 50)
+            logging.info(f'Validation Summary:\nEpoch: {epoch}, '
+                        f'\nval_Iteration: {i}, '
+                        f'\nval_NELBO: {nelbo.item()}, '
+                        f'\nval_Reconstruction Loss: {reconstruction_loss.item()}, '
+                        f'\nval_KL Loss: {kl_loss.item()}')
             if args.wandb:
                 wandb.log({"val_iteration": j, 
                             "val_nelbo_mini_batch": nelbo.item(), 
