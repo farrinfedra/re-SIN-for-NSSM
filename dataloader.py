@@ -95,14 +95,14 @@ class MusicDataset(Dataset):
         max_sequence_length = max(sequence_lengths)
         split_length = len(split_data)
 
-        padded_all_music_one_hot = pad_sequence([torch.tensor(music) for music in all_music_one_hot_list], batch_first=True, padding_value=-1)
+        padded_all_music_one_hot = pad_sequence([torch.tensor(music) for music in all_music_one_hot_list], batch_first=True, padding_value=-1).to(dtype=torch.float32)
 
         masks = torch.zeros(( split_length, max_sequence_length, self.max_note ))
         masks = padded_all_music_one_hot != -1
     
         data_dict['encodings'] = padded_all_music_one_hot
         data_dict['sequence_lengths'] = sequence_lengths
-        data_dict['masks'] = masks
+        data_dict['masks'] = masks.to(dtype=torch.float32)
         
         return data_dict
         

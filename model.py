@@ -61,12 +61,13 @@ class Combiner(nn.Module): #DKS
     def forward(self, h_right):
         #shape Z: (batch_size, seq_len, latent_dim)
         b, seq_len, _ = h_right.shape
-        Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim) 
+        Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim).to(h_right.device)
         mus, sigmas = torch.zeros((b, seq_len, self.latent_dim)), \
                         torch.ones((b, seq_len, self.latent_dim))
         
         for t in range(1, h_right.shape[1] + 1):
             # print(f'Z[:, t - 1, :].shape: {Z[:, t - 1, :].shape}')
+            
             h_combined = self.combiner(Z[:, t - 1, :])
             h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
             mu = self.mu_linear(h_combined)
@@ -91,7 +92,7 @@ class Inference(nn.Module):
                                 hidden_size=hidden_dim, 
                                 bidirectional=True, 
                                 batch_first=True)
-        self.z_0 = torch.zeros(1, 1, self.hidden_size)
+        # self.z_0 = torch.zeros(, 1, self.hidden_size)
         # self.h_right = None
         # self.h_left = None
         self.combiner = Combiner(self.latent_dim, self.hidden_size)
