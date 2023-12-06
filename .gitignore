@@ -167,7 +167,6 @@ test.ipynb
 .ipynb_checkpoints
 .DS_Store
 data
-*.ipynb
 .vscode
 saved_models
 wandb
