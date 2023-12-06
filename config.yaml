@@ -24,8 +24,13 @@ train:
 
   save_model: True
   save_dir: saved_models
-  save_every: 500
+  save_every: 50
 
   proj_name: train_dvae #for wandb
   wandb_user_name: farrinsofian #for wandb
 
+sample:
+  ckpt_path: saved_models/dvae_model_900.pt
+  num_samples: 1
+  convert_to_song: True
+  save_dir: samples

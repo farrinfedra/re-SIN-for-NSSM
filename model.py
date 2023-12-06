@@ -164,7 +164,7 @@ class Generator(nn.Module):
                 nn.init.zeros_(layer.bias.data)
         
     def sample(self, mu, sigma):
-        return mu + sigma * torch.randn_like(mu)
+        return mu + torch.sqrt(sigma) * torch.randn_like(mu)
     
     def get_mu_tr(self, z_t_1):
         """returns mu_t for a single sample depending on t-1"""
@@ -211,7 +211,7 @@ class Generator(nn.Module):
 
     def forward(self, z_hat):
         
-        x_hat = self.emission(z_hat) #for reconstruction
+        x_hat = self.emission(z_hat) #for reconstruction #shape: (batch_size, seq_len, output_dim)
         mus, sigmas = self.transition_forward(z_hat)
 
         return x_hat, mus, sigmas #x_hat for reconstruction, mus and sigmas for KL divergence
