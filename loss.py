@@ -17,13 +17,14 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
         kl: tensor: (batch,): kl between each sample
     """
     element_wise = 0.5 * (torch.log(pv) - torch.log(qv) + qv / pv + (qm - pm).pow(2) / pv - 1)
-
+    element_wise = element_wise.to(sequence_lengths.device)
     # mask out the padding after sequence length for each datapoint
     bs, max_sequence_length, _ = element_wise.shape
 
     # range_tensor = torch.arange(max_sequence_length).unsqueeze(0).expand(bs, -1) # [seq] -> [1, seq] -> [bs, seq]
-    range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs)
+    range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device)
     mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
+    mask = mask.to(sequence_lengths.device)
     mask = rearrange(mask, 'b s -> b s ()')
 
     kl = element_wise * mask.float()
@@ -44,14 +45,14 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths):
     Return:
         log_prob: tensor: (batch,): log probability of each sample
     """
-    
-    log_prob = F.binary_cross_entropy(input=logits, target=x) 
+    log_prob = F.binary_cross_entropy(input=logits, target=x, reduction='none') #shape: (batch, seq_len, dim=88)
     bs, max_sequence_length, _ = x.shape
     
-    range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs)
+    range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device) #shape: (batch, seq_len)
     mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
+    mask = mask.to(sequence_lengths.device)
     mask = rearrange(mask, 'b s -> b s ()')
-
+    log_prob = log_prob.to(sequence_lengths.device)
     nll = log_prob * mask.float()
     
     return nll.sum(-1).sum(-1)

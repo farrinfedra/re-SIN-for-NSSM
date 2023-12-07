@@ -162,7 +162,6 @@ cython_debug/
 *.wav
 *.mp3
 *.mid
-*.sf2
 test.ipynb
 .ipynb_checkpoints
 .DS_Store

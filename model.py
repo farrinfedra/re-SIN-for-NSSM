@@ -54,8 +54,8 @@ class Combiner(nn.Module): #DKS
         self.mus = []
         self.sigmas = []
         
-    def sample(self, mu, sigma):
-        return mu + sigma * torch.randn_like(mu)
+    def sample(self, mu, var): #epsilon ~ N(0, 1) * sqrt(var) + mean
+        return mu + torch.sqrt(var) * torch.randn_like(mu)
         
 
     def forward(self, h_right):
@@ -67,7 +67,7 @@ class Combiner(nn.Module): #DKS
         
         mus = []
         sigmas = []
-        z_init = torch.randn(b, 1, self.latent_dim).to(h_right.device) 
+        z_init = torch.zeros( (b, 1, self.latent_dim) ).to(h_right.device) #TODO: changed to 0
         Z = [z_init]
         
         for t in range(1, h_right.shape[1] + 1):
@@ -76,11 +76,11 @@ class Combiner(nn.Module): #DKS
             h_combined = self.combiner(z_prev)
             h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
             mu = self.mu_linear(h_combined) #shape: (batch_size, latent_dim)
-            sigma = self.sigma_linear(h_combined)
-            z_t = self.sample(mu, sigma)
+            var = self.sigma_linear(h_combined)
+            z_t = self.sample(mu, var)
 
             mus.append(mu.unsqueeze(1))
-            sigmas.append(sigma.unsqueeze(1))
+            sigmas.append(var.unsqueeze(1))
             Z.append(z_t.unsqueeze(1))
         
         Z = torch.cat(Z, dim=1)
@@ -108,8 +108,8 @@ class Inference(nn.Module):
 
     def forward(self, x):
         out, hidden = self.rnn(x)
-        self.h_right = out[:, :, :self.hidden_size]
-        self.h_left = out[:, :, self.hidden_size:]
+        self.h_left = out[:, :, :self.hidden_size]
+        self.h_right = out[:, :, self.hidden_size:]
         z = self.combiner(self.h_right)
         return z
         
@@ -146,10 +146,11 @@ class Generator(nn.Module):
                     torch.nn.Linear(self.latent_dim, self.hidden_dim_tr), 
                     torch.nn.ReLU(),
                     torch.nn.Linear(self.hidden_dim_tr, self.latent_dim), 
-                    # torch.nn.Identity(),
+                    torch.nn.Identity(),
                 )
         self.mu_gated_linear = torch.nn.Linear(self.latent_dim, 
                                                self.latent_dim) #w_{mu_p} * z_{t-1} + b_{mu_p}
+        
         self.sigma_gated_linear = torch.nn.Sequential( #w_{sigma_p} * relu(h_t) + b_{sigma_p}
                                                     torch.nn.ReLU(),
                                                     torch.nn.Linear(self.latent_dim, self.latent_dim),
@@ -188,7 +189,7 @@ class Generator(nn.Module):
 
         for t in range(seq_len):
             
-            z_prev = Z_accum[-1].squeeze(1)
+            z_prev = Z_accum[-1].squeeze(1) #shape: (batch_size, latent_dim)
             mu_generator = self.get_mu_tr(z_prev)
             out = self.H(z_prev)
             sigma_generator = self.sigma_gated_linear(out)

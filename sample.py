@@ -16,7 +16,7 @@ from model import DVAE
 def get_arguments():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str, default='config.yaml')
-    argparser.add_argument('--device', type=str, default='cpu')
+    argparser.add_argument('--device', type=str, default='mps')
     argparser.add_argument('--seed', type=int, default=42)
     argparser.add_argument('--wandb', action='store_true', default=False)
     
@@ -52,15 +52,6 @@ def main():
             convert_to_song(x_hat, config.sample.save_dir)
         # print(x_hat.shape)
         # np.save('sample.npy', x_hat)
-
-
-
-
-
-
-
-
-
 
 
 
