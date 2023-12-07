@@ -170,3 +170,4 @@ data
 saved_models
 wandb
 train_log.log
+*.pt
