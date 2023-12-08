@@ -40,11 +40,11 @@ test:
   split: test 
 
 sample:
-  ckpt_path: saved_models_dks_mean_T/dvae_model_150.pt
+  ckpt_path: saved_models_dks_annealing/dvae_model_50.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: T_mean #for each experiment
-  threshhold: 0.4
+  exp_name: annealing #for each experiment
+  threshhold: 0.3
   # convert_to_song: True
   save_dir: audio_samples
   split: train # this is if you want to sample from the train or test set with no random z

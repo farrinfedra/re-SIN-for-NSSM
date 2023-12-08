@@ -112,8 +112,8 @@ class MusicDataset(Dataset):
     def recon_to_midi(self, x_hat, x_orig=None, threshhold=0.5):
         """
         converts the reconstruction to midi
-        x_hat: (seq_len, 54)
-        (optional) x_orig: (seq_len, 54) #for training reconstruction
+        x_hat: (seq_len, 88)
+        (optional) x_orig: (seq_len, 88) #for training reconstruction
 
         """
         midis = []

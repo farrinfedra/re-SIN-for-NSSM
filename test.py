@@ -46,14 +46,16 @@ def main():
             encodings = encodings.to(args.device)
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
-            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths)
+            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths, reduction='none')
             kl_loss = kl_normal(mus_inference, 
                                 sigmas_inference, 
                                 mus_generator, 
                                 sigmas_generators, 
-                                sequence_lengths)
+                                sequence_lengths,
+                                reduction='none')
             
             nelbo = reconstruction_loss + kl_loss
+            
             nelbo = nelbo.mean()
             val_epoch_loss += nelbo.item()
             

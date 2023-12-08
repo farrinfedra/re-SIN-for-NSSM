@@ -2,7 +2,7 @@ from einops import repeat, rearrange
 import torch
 import torch.nn.functional as F
 
-def kl_normal(qm, qv, pm, pv, sequence_lengths):
+def kl_normal(qm, qv, pm, pv, sequence_lengths, T_reduction='mean'):
     """
     Computes the elem-wise KL divergence between two normal distributions KL(q || p) and
     sum over the last dimension
@@ -30,13 +30,18 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
     kl = element_wise * mask.float()
     kl = kl.sum(-1) #sum over latent dim
     # sum_T = sequence_lengths.float().sum(-1)
-    kl = kl.mean(-1) #mean over sequence length
+    if T_reduction == 'mean':
+        kl = kl.mean(-1) #mean over sequence length
+        
+    elif T_reduction == 'sum':
+        kl = kl.sum(-1)
+
     
     return kl
 
 
 
-def log_bernoulli_with_logits(x, logits, sequence_lengths):
+def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
     """
     Computes the log probability of a Bernoulli given its logits
 
@@ -59,6 +64,9 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths):
     #take sum over latent and mean of sequence lenghts
     nll = nll.sum(-1) #sum over latent dim
     # sum_T = sequence_lengths.float().sum(-1)
-    nll = nll.mean(-1) #mean over sequence length
+    if T_reduction == 'mean':
+        nll = nll.mean(-1) #mean over sequence length
+    elif T_reduction == 'sum':
+        nll = nll.sum(-1)
     
     return nll
