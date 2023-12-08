@@ -8,7 +8,7 @@ import os
 
 
 class MusicDataset(Dataset):
-    def __init__(self, config, max_note=88, min_note=21, split='train'):
+    def __init__(self, config, max_note=96, min_note=43, split='train'):
         """The config is only the dataset part of the config file."""
         self.config = config
         self.max_note = max_note
@@ -16,6 +16,7 @@ class MusicDataset(Dataset):
         self.path = config.path
         self.split = split
         
+        self.original_data = self.read_pickle_from_url(self.path)
         self.data = self.load_process_data()
         self.sequence_lengths = self.data['sequence_lengths']
         self.encodings = self.data['encodings']
@@ -77,9 +78,11 @@ class MusicDataset(Dataset):
         
         all_music_one_hot_list = []    
         sequence_lengths = []
-
+        
+        note_range = self.max_note - self.min_note + 1
+        
         for music in split_data:
-            one_hot_matrix = np.zeros((len(music), self.max_note), dtype=int)
+            one_hot_matrix = np.zeros((len(music), note_range), dtype=int)
             
             for row_index, keys in enumerate(music):
 
@@ -107,6 +110,35 @@ class MusicDataset(Dataset):
         # data_dict['masks'] = masks.to(dtype=torch.float32)
         
         return data_dict
+    
+    def recon_to_midi(x_hat, x_orig=None):
+        """
+        converts the reconstruction to midi
+        x_hat: (seq_len, 88)
+        (optional) x_orig: (seq_len, 88) #for training reconstruction
+
+        """
+        midis = []
+        
+        
+        
+        if x_orig:
+            rows, cols = np.where(x_orig == 1)
+            midis_orig = []
+            # Replace 1's with column indices
+            for row, col in zip(rows, cols):
+                x_orig[row, col] = col + 21
+    
+            midis_orig = [tuple(map(int, x)) for x in midis_orig]
+            
+        else:
+            midis_orig = None
+                
+        return midis ,midis_orig
+                
+        
+        
+        
         
     def get_max_sequence_length(self):
         return max(self.sequence_lengths)
