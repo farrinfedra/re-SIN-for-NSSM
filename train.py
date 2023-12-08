@@ -53,7 +53,8 @@ def main():
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
                     latent_dim=config.model.latent_dim,
-                    combiner_type=config.model.combiner_type).to(device)
+                    combiner_type=config.model.combiner_type,
+                    rnn_type=config.model.rnn_type).to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
 

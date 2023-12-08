@@ -12,6 +12,7 @@ class DVAE(nn.Module):
                     hidden_dim_tr=200, 
                     latent_dim=100,
                     combiner_type='dks',
+                    rnn_type='rnn',
                     ):
         super(DVAE, self).__init__()
         
@@ -22,11 +23,13 @@ class DVAE(nn.Module):
         self.latent_dim = latent_dim
         self.output_dim = input_dim
         self.combiner_type = combiner_type
+        self.rnn_type = rnn_type
         
         self.encoder = Inference(self.input_dim, 
                                 self.hidden_dim, 
                                 self.latent_dim,
-                                self.combiner_type)
+                                self.combiner_type,
+                                self.rnn_type)
         
         self.decoder = Generator(self.hidden_dim_em, 
                                 self.latent_dim, 
@@ -154,16 +157,26 @@ class MeanFieldCombiner(nn.Module): #MF
         
 
 class Inference(nn.Module):
-    def __init__(self, input_dim, hidden_dim=400, latent_dim=100, combiner_type='dks'):
+    def __init__(self, input_dim, hidden_dim=400, latent_dim=100, combiner_type='dks', rnn_type='rnn'):
         super(Inference, self).__init__()
         self.hidden_size = hidden_dim
         self.latent_dim = latent_dim
         self.combiner_type = combiner_type
+        self.rnn_type = rnn_type
         
-        self.rnn = torch.nn.RNN(input_size=input_dim, 
-                                hidden_size=hidden_dim, 
-                                bidirectional=True, 
-                                batch_first=True)
+        if self.rnn_type == 'rnn':
+            self.rnn = torch.nn.RNN(input_size=input_dim, 
+                                    hidden_size=hidden_dim, 
+                                    bidirectional=True, 
+                                    batch_first=True)
+        elif self.rnn_type == 'lstm':
+            self.rnn = torch.nn.LSTM(input_size=input_dim, 
+                                    hidden_size=hidden_dim, 
+                                    bidirectional=True, 
+                                    batch_first=True)
+        else:
+            raise NotImplementedError(f'rnn_type: {self.rnn_type} not implemented')
+            
 
         if self.combiner_type == 'dks' or self.combiner_type == 'st-lr':
             self.combiner = DKSCombiner(self.latent_dim, self.hidden_size)
