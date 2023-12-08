@@ -16,6 +16,7 @@ model:
   hidden_dim_tr: 200 
   latent_dim: 100
   combiner_type: 'dks'
+  rnn_type: 'lstm'
 
 train:
   epochs: 100

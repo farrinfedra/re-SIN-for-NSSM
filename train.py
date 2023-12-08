@@ -17,7 +17,7 @@ def get_arguments():
     argparser.add_argument('--config', type=str, default='config.yaml')
     argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--seed', type=int, default=42)
-    argparser.add_argument('--wandb', action='store_true', default=False)
+    argparser.add_argument('--wandb', action='store_true', default=True)
     argparser.add_argument('--debug', action='store_true', default=False)
     
     args = argparser.parse_args()
@@ -55,7 +55,8 @@ def main():
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
                     latent_dim=config.model.latent_dim,
-                    combiner_type=config.model.combiner_type).to(device)
+                    combiner_type=config.model.combiner_type,
+                    rnn_type=config.model.rnn_type).to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
 
