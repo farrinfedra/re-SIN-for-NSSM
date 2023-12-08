@@ -5,9 +5,9 @@ import numpy as np
 from midiutil import MIDIFile
 from pydub import AudioSegment
 from midi2audio import FluidSynth
+import os
 
-
-def midi_to_song(data):
+def midi_to_song(data, file_name, experiment_name, mp3=False):
     fs = FluidSynth('default.sf2')
     # Create a MIDI file
     midi_file = MIDIFile(1)  # One track
@@ -24,14 +24,19 @@ def midi_to_song(data):
         time += duration
 
     # Write the MIDI file to disk
-    with open("output.mid", "wb") as output_file:
+    with open(f"{file_name}.mid", "wb") as output_file:
         midi_file.writeFile(output_file)
 
+    path = os.path.join(experiment_name, f'{file_name}.wav')
+    os.makedirs(path, exist_ok=True)
+    
     # Synthesize MIDI to WAV using FluidSynth
     # fs = FluidSynth('path_to_soundfont.sf2')
-    fs.midi_to_audio('output.mid', 'output.wav')
+    fs.midi_to_audio(f'{file_name}.mid', f'{file_name}.wav')
 
-    # Convert WAV to MP3
-    audio = AudioSegment.from_wav('output.wav')
-    audio.export('output.mp3', format='mp3')
+    # # Convert WAV to MP3
+    if mp3:
+        audio = AudioSegment.from_wav(f'{file_name}.wav')
+        audio.export(f'{file_name}.mp3', format='mp3')
+    
     
