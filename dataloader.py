@@ -8,7 +8,7 @@ import os
 
 
 class MusicDataset(Dataset):
-    def __init__(self, config, max_note=96, min_note=43, split='train'):
+    def __init__(self, config, max_note=108, min_note=21, split='train'):
         """The config is only the dataset part of the config file."""
         self.config = config
         self.max_note = max_note
@@ -79,7 +79,8 @@ class MusicDataset(Dataset):
         all_music_one_hot_list = []    
         sequence_lengths = []
         
-        note_range = self.max_note - self.min_note + 1
+        
+        note_range = self.max_note - self.min_note + 1 #88
         
         for music in split_data:
             one_hot_matrix = np.zeros((len(music), note_range), dtype=int)
