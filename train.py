@@ -17,14 +17,14 @@ def get_arguments():
     argparser.add_argument('--config', type=str, default='config.yaml')
     argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--seed', type=int, default=42)
-    argparser.add_argument('--wandb', action='store_true', default=False)
+    argparser.add_argument('--wandb', action='store_true', default=True)
     argparser.add_argument('--debug', action='store_true', default=False)
     
     args = argparser.parse_args()
     return args
 
 def setup_logger():
-    logging.basicConfig(filename='training_log_fix_loss.log', level=logging.INFO,
+    logging.basicConfig(filename='training_log_lstm.log', level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
 
@@ -58,6 +58,7 @@ def main():
 
     if not args.debug:
         setup_logger()
+
         
     if args.wandb:
         config_dict = OmegaConf.to_container(config, resolve=True)

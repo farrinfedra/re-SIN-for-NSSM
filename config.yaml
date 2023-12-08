@@ -10,14 +10,14 @@ dataset:
   split: train
 
 model:
-  input_dim: 88 
+  input_dim: 54 
   hidden_dim: 400
   hidden_dim_em: 100 
   hidden_dim_tr: 200 
   latent_dim: 100
 
 train:
-  epochs: 1000
+  epochs: 150
   batch_size: 64
   num_workers: 4
   lr: 0.0008 #TODO: adjust this
@@ -26,11 +26,11 @@ train:
   save_dir: saved_models
   save_every: 50
 
-  proj_name: train_dvae_final #for wandb
-  wandb_user_name: farrinsofian #for wandb
+  proj_name: train_dvae_lstm
+  wandb_user_name: arghavanrez
 
 sample:
-  ckpt_path: saved_models/dvae_model_900.pt
+  ckpt_path: saved_models_lstm/dvae_model_1000.pt
   num_samples: 1
   convert_to_song: True
   save_dir: samples

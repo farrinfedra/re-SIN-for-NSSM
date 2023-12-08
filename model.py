@@ -97,7 +97,7 @@ class Inference(nn.Module):
         super(Inference, self).__init__()
         self.hidden_size = hidden_dim
         self.latent_dim = latent_dim
-        self.rnn = torch.nn.RNN(input_size=input_dim, 
+        self.rnn = torch.nn.LSTM(input_size=input_dim, 
                                 hidden_size=hidden_dim, 
                                 bidirectional=True, 
                                 batch_first=True)
