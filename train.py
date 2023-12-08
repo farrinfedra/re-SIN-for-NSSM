@@ -12,12 +12,14 @@ from dataloader import MusicDataset
 from model import DVAE 
 from loss import kl_normal, log_bernoulli_with_logits
 
+
+
 def get_arguments():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str, default='config.yaml')
     argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--seed', type=int, default=42)
-    argparser.add_argument('--wandb', action='store_true', default=True)
+    argparser.add_argument('--wandb', action='store_true', default=False)
     argparser.add_argument('--debug', action='store_true', default=False)
     
     args = argparser.parse_args()
@@ -77,6 +79,10 @@ def main():
     total_annealing_steps = step_per_epoch * config.train.annealing_epochs
     annealing_rate = 1.0 / total_annealing_steps 
     kl_weight = 0.0  # Start with 0 
+    
+    
+    best_model_loss = 100000
+    best_model = None
        
     model.train()
     for epoch in range(config.train.epochs + 1):
@@ -133,16 +139,15 @@ def main():
                         #  "recon_loss_epoch": reconstruction_loss.item(),
                         #  "kl_loss_epoch": kl_loss.item()})
             
-        if config.train.save_model and epoch % config.train.save_every == 0:
-            os.makedirs(config.train.save_dir, exist_ok=True)
-            torch.save(model.state_dict(), os.path.join(config.train.save_dir, f'dvae_model_{epoch}.pt'))
+        
         
 
 
     #validation
         if not args.debug:
             logging.info('Validation Started....')
-            
+        
+           
         model.eval()
         val_epoch_loss = 0
         with torch.no_grad():   
@@ -185,6 +190,15 @@ def main():
                 "avg_train_loss/epoch": avg_train_loss,
                 "avg_val_loss/epoch": avg_val_loss
             })
+            
+        if avg_val_loss < best_model_loss:
+            best_model_loss = avg_val_loss
+            best_model = model
+            
+        if config.train.save_model and epoch % config.train.save_every == 0:
+            os.makedirs(config.train.save_dir, exist_ok=True)
+            file_name = os.path.join(config.train.save_dir, 'best_model_{epoch}.pt')
+            torch.save(best_model.state_dict(), file_name)
         
     print(f"Finished Training for {config.train.epochs} epochs")
     

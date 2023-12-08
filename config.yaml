@@ -26,11 +26,11 @@ train:
   annealing_epochs: 50
   annealing: True
   save_model: True
-  save_dir: saved_models_dks_annealing
+  save_dir: test
   save_every: 50
-  logger_name: train_dvae_dks_annealing #for logger
+  logger_name: test #for logger
 
-  proj_name: train_dvae_dks_annealing #for wandb
+  proj_name: test_implementation #for wandb
   wandb_user_name: farrinsofian #for wandb
 
 test:

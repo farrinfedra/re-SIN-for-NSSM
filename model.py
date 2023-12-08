@@ -82,7 +82,12 @@ class DKSCombiner(nn.Module): #DKS
             
             h_combined = self.combiner(z_prev)
             
-            if h_left is None:
+            if h_right is None:
+                assert h_left is not None
+                h_combined = .5 * (F.tanh(h_combined) + h_left[:, t - 1, :])
+                
+            elif h_left is None:
+                assert h_right is not None
                 h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
             else:
                 h_combined = .3 * (F.tanh(h_combined) + h_right[:, t - 1, :] + h_left[:, t - 1, :])
@@ -178,7 +183,7 @@ class Inference(nn.Module):
             raise NotImplementedError(f'rnn_type: {self.rnn_type} not implemented')
             
 
-        if self.combiner_type == 'dks' or self.combiner_type == 'st-lr':
+        if self.combiner_type == 'dks' or self.combiner_type == 'st-lr' or self.combiner_type == 'st-l':
             self.combiner = DKSCombiner(self.latent_dim, self.hidden_size)
             
         elif self.combiner_type == 'mf-lr':
@@ -192,11 +197,14 @@ class Inference(nn.Module):
         self.h_left = out[:, :, :self.hidden_size]
         self.h_right = out[:, :, self.hidden_size:]
         
-        if self.combiner_type == 'st-lr':
+        if self.combiner_type == 'st-l':
+            z = self.combiner(h_right=None ,h_left=self.h_left)
+        
+        elif self.combiner_type == 'st-lr':
             z= self.combiner(self.h_right, self.h_left)
         
         elif self.combiner_type == 'dks':
-            z = self.combiner(self.h_right)
+            z = self.combiner(self.h_right, h_left=None)
             
         elif self.combiner_type == 'mf-lr':
             z = self.combiner(self.h_right, self.h_left) 

@@ -30,7 +30,10 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths, T_reduction='mean'):
     kl = element_wise * mask.float()
     kl = kl.sum(-1) #sum over latent dim
     # sum_T = sequence_lengths.float().sum(-1)
-    if T_reduction == 'mean':
+    if T_reduction == 'none':
+        kl = kl
+        
+    elif T_reduction == 'mean':
         kl = kl.mean(-1) #mean over sequence length
         
     elif T_reduction == 'sum':
@@ -64,7 +67,9 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
     #take sum over latent and mean of sequence lenghts
     nll = nll.sum(-1) #sum over latent dim
     # sum_T = sequence_lengths.float().sum(-1)
-    if T_reduction == 'mean':
+    if T_reduction == 'none':
+        nll = nll
+    elif T_reduction == 'mean':
         nll = nll.mean(-1) #mean over sequence length
     elif T_reduction == 'sum':
         nll = nll.sum(-1)

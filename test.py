@@ -5,7 +5,7 @@ import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 from utils import midi_to_song, log_midis
-
+from loss import kl_normal, log_bernoulli_with_logits
 import logging
 
 from dataloader import MusicDataset
@@ -46,17 +46,33 @@ def main():
             encodings = encodings.to(args.device)
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
-            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths, reduction='none')
+            #get loss with only sum over latent dim dimension
+            reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths, T_reduction='none') 
             kl_loss = kl_normal(mus_inference, 
                                 sigmas_inference, 
                                 mus_generator, 
                                 sigmas_generators, 
                                 sequence_lengths,
-                                reduction='none')
+                                T_reduction='none')
             
+            kl_loss = kl_loss.sum(-1) #sum over T
+            reconstruction_loss = reconstruction_loss.sum(-1) #sum over T
+            #for a:
+            
+            #for b:
+            nelbo_matrix = reconstruction_loss + kl_loss
+            nelbo_matrix = nelbo_matrix.sum(-1) #sum over batch_size
+            sequence_lengths_sum = sequence_lengths.sum(-1)
+            nelbo = nelbo_matrix / sequence_lengths_sum
+            
+            #for c:
+            #divide each sample in batch by its sequence length
             nelbo = reconstruction_loss + kl_loss
+            nelbo = nelbo / sequence_lengths.float()
+            #take mean over batch
+            nelbo = nelbo.mean(-1)
             
-            nelbo = nelbo.mean()
+            # nelbo = nelbo.mean()
             val_epoch_loss += nelbo.item()
             
         if not args.debug:
