@@ -10,20 +10,21 @@ dataset:
   split: train
 
 model:
-  input_dim: 54 
+  input_dim: 54
   hidden_dim: 400
   hidden_dim_em: 100 
   hidden_dim_tr: 200 
   latent_dim: 100
+  combiner_type: 'mf-lr'
 
 train:
-  epochs: 150
+  epochs: 100
   batch_size: 64
   num_workers: 4
   lr: 0.0008 #TODO: adjust this
 
   save_model: True
-  save_dir: saved_models
+  save_dir: saved_models_mf-lr
   save_every: 50
 
   proj_name: train_dvae_lstm
@@ -32,5 +33,8 @@ train:
 sample:
   ckpt_path: saved_models_lstm/dvae_model_1000.pt
   num_samples: 1
-  convert_to_song: True
+  sequence_length: 40
+  experiment_name: fix_loss #for each experiment
+  # convert_to_song: True
   save_dir: samples
+  split: train # this is if you want to sample from the train or test set with no random z

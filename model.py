@@ -10,7 +10,8 @@ class DVAE(nn.Module):
                     hidden_dim=400,
                     hidden_dim_em=100, 
                     hidden_dim_tr=200, 
-                    latent_dim=100
+                    latent_dim=100,
+                    combiner_type='dks',
                     ):
         super(DVAE, self).__init__()
         
@@ -20,10 +21,13 @@ class DVAE(nn.Module):
         self.hidden_dim_tr = hidden_dim_tr
         self.latent_dim = latent_dim
         self.output_dim = input_dim
+        self.combiner_type = combiner_type
         
         self.encoder = Inference(self.input_dim, 
                                 self.hidden_dim, 
-                                self.latent_dim)
+                                self.latent_dim,
+                                self.combiner_type)
+        
         self.decoder = Generator(self.hidden_dim_em, 
                                 self.latent_dim, 
                                 self.hidden_dim_tr, 
@@ -35,14 +39,14 @@ class DVAE(nn.Module):
         return x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generator
 
 
-class Combiner(nn.Module): #DKS
+class DKSCombiner(nn.Module): #DKS
     def __init__(self, latent_dim, hidden_size):
-        super(Combiner, self).__init__()
+        super(DKSCombiner, self).__init__()
         
         self.latent_dim = latent_dim
         self.hidden_size = hidden_size
         
-        # print(f'latent_dim: {latent_dim}, hidden_size: {hidden_size}')
+
         self.combiner = torch.nn.Linear(self.latent_dim, 
                                         self.hidden_size)
         self.mu_linear = torch.nn.Linear(self.hidden_size, 
@@ -58,7 +62,7 @@ class Combiner(nn.Module): #DKS
         return mu + torch.sqrt(var) * torch.randn_like(mu)
         
 
-    def forward(self, h_right):
+    def forward(self, h_right, h_left=None):
         #shape Z: (batch_size, seq_len, latent_dim)
         b, seq_len, _ = h_right.shape
         # Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim).to(h_right.device)
@@ -74,7 +78,12 @@ class Combiner(nn.Module): #DKS
             z_prev = Z[-1].squeeze(1) #shape: (batch_size, latent_dim)
             
             h_combined = self.combiner(z_prev)
-            h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
+            
+            if h_left is None:
+                h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
+            else:
+                h_combined = .3 * (F.tanh(h_combined) + h_right[:, t - 1, :] + h_left[:, t - 1, :])
+            
             mu = self.mu_linear(h_combined) #shape: (batch_size, latent_dim)
             var = self.sigma_linear(h_combined)
             z_t = self.sample(mu, var)
@@ -91,26 +100,93 @@ class Combiner(nn.Module): #DKS
         return Z[:, 1:, :], mus, sigmas
             
         
+class MeanFieldCombiner(nn.Module): #MF
+    def __init__(self, latent_dim, hidden_size):
+        super(MeanFieldCombiner, self).__init__()
+        
+        self.latent_dim = latent_dim #100
+        self.hidden_size = hidden_size #400
+        
+        self.linear_mu_right = torch.nn.Linear(self.hidden_size, 
+                                                self.latent_dim)
+        self.linear_sigma_right = torch.nn.Sequential( 
+                                                torch.nn.Linear(self.hidden_size, 
+                                                                self.latent_dim),
+                                                torch.nn.Softplus())
+        
+        self.linear_mu_left = torch.nn.Linear(self.hidden_size,
+                                                self.latent_dim)
+        self.linear_sigma_left = torch.nn.Sequential(
+                                                torch.nn.Linear(self.hidden_size, 
+                                                                self.latent_dim),
+                                                torch.nn.Softplus())
+    
+    def sample(self, mu, var): #epsilon ~ N(0, 1) * sqrt(var) + mean
+        return mu + torch.sqrt(var) * torch.randn_like(mu)    
+        
+    def forward(self, h_right, h_left):
+        bs, seq_len, _ = h_right.shape
+        mus = []
+        sigmas = []
+        Z = []
+        
+        for t in range(seq_len):
+            mu_r = self.linear_mu_right(h_right[:, t, :])
+            var_r = self.linear_sigma_right(h_right[:, t, :])
+            
+            mu_l = self.linear_mu_left(h_left[:, t, :])
+            var_l = self.linear_sigma_left(h_left[:, t, :])
+            
+            mu_t = (mu_r * var_l + mu_l * var_r) / (var_r + var_l)
+            var_t = (var_r * var_l) / (var_r + var_l)
+            
+            Z.append(self.sample(mu_t, var_t).unsqueeze(1))
+            mus.append(mu_t.unsqueeze(1))
+            sigmas.append(var_t.unsqueeze(1))
+            
+            
+        mus = torch.cat(mus, dim=1)
+        sigmas = torch.cat(sigmas, dim=1)
+        Z = torch.cat(Z, dim=1)
+        
+        return Z, mus, sigmas 
+        
+        
 
 class Inference(nn.Module):
-    def __init__(self, input_dim, hidden_dim=400, latent_dim=100):
+    def __init__(self, input_dim, hidden_dim=400, latent_dim=100, combiner_type='dks'):
         super(Inference, self).__init__()
         self.hidden_size = hidden_dim
         self.latent_dim = latent_dim
-        self.rnn = torch.nn.LSTM(input_size=input_dim, 
+        self.combiner_type = combiner_type
+        
+        self.rnn = torch.nn.RNN(input_size=input_dim, 
                                 hidden_size=hidden_dim, 
                                 bidirectional=True, 
                                 batch_first=True)
-        # self.z_0 = torch.zeros(, 1, self.hidden_size)
-        # self.h_right = None
-        # self.h_left = None
-        self.combiner = Combiner(self.latent_dim, self.hidden_size)
+
+        if self.combiner_type == 'dks' or self.combiner_type == 'st-lr':
+            self.combiner = DKSCombiner(self.latent_dim, self.hidden_size)
+            
+        elif self.combiner_type == 'mf-lr':
+            self.combiner = MeanFieldCombiner(self.latent_dim, self.hidden_size)
+        
+        else:
+            raise NotImplementedError(f'combiner_type: {self.combiner_type} not implemented')
 
     def forward(self, x):
         out, hidden = self.rnn(x)
         self.h_left = out[:, :, :self.hidden_size]
         self.h_right = out[:, :, self.hidden_size:]
-        z = self.combiner(self.h_right)
+        
+        if self.combiner_type == 'st-lr':
+            z= self.combiner(self.h_right, self.h_left)
+        
+        elif self.combiner_type == 'dks':
+            z = self.combiner(self.h_right)
+            
+        elif self.combiner_type == 'mf-lr':
+            z = self.combiner(self.h_right, self.h_left) 
         return z
         
 
