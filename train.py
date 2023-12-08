@@ -150,12 +150,13 @@ def main():
                 encodings = encodings.to(device)
                 x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
                 
-                reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths)
+                reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths,  T_reduction='mean')
                 kl_loss = kl_normal(mus_inference, 
                                     sigmas_inference, 
                                     mus_generator, 
                                     sigmas_generators, 
-                                    sequence_lengths)
+                                    sequence_lengths,
+                                    T_reduction='mean')
                 
                 if config.train.annealing:
                     kl_loss = kl_loss * kl_weight
