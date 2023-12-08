@@ -28,9 +28,9 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
     mask = rearrange(mask, 'b s -> b s ()')
 
     kl = element_wise * mask.float()
-    kl = kl.sum(-1)
-    sum_T = sequence_lengths.float().sum(-1)
-    kl = kl / sum_T
+    kl = kl.sum(-1) #sum over latent dim
+    # sum_T = sequence_lengths.float().sum(-1)
+    kl = kl.mean(-1) #mean over sequence length
     
     return kl
 
@@ -57,8 +57,8 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths):
     log_prob = log_prob.to(sequence_lengths.device)
     nll = log_prob * mask.float()
     #take sum over latent and mean of sequence lenghts
-    nll = nll.sum(-1)
-    sum_T = sequence_lengths.float().sum(-1)
-    nll = nll / sum_T
+    nll = nll.sum(-1) #sum over latent dim
+    # sum_T = sequence_lengths.float().sum(-1)
+    nll = nll.mean(-1) #mean over sequence length
     
     return nll

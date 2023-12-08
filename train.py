@@ -72,6 +72,12 @@ def main():
     if not args.debug:    
         logging.info('Training Started')
         
+        
+    step_per_epoch = len(tr_dataset) / config.train.batch_size
+    total_annealing_steps = step_per_epoch * config.train.annealing_epochs
+    annealing_rate = 1.0 / total_annealing_steps 
+    kl_weight = 0.0  # Start with 0 
+       
     model.train()
     for epoch in range(config.train.epochs + 1):
         epoch_loss = 0
@@ -84,11 +90,15 @@ def main():
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
             reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths)
+            
+            kl_weight = min(kl_weight + annealing_rate, 1)
             kl_loss = kl_normal(mus_inference, 
                                 sigmas_inference, 
                                 mus_generator, 
                                 sigmas_generators, 
                                 sequence_lengths)
+            if config.train.annealing:
+                kl_loss = kl_weight * kl_loss
             
             
             nelbo = reconstruction_loss.to(device) + kl_loss.to(device)
@@ -145,6 +155,9 @@ def main():
                                     sigmas_generators, 
                                     sequence_lengths)
                 
+                if config.train.annealing:
+                    kl_loss = kl_loss * kl_weight
+                    
                 nelbo = reconstruction_loss + kl_loss
                 nelbo = nelbo.mean()
                 val_epoch_loss += nelbo.item()
