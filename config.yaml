@@ -10,7 +10,7 @@ dataset:
   split: train
 
 model:
-  input_dim: 88 
+  input_dim: 54
   hidden_dim: 400
   hidden_dim_em: 100 
   hidden_dim_tr: 200 
@@ -32,5 +32,8 @@ train:
 sample:
   ckpt_path: saved_models/dvae_model_900.pt
   num_samples: 1
-  convert_to_song: True
+  sequence_length: 40
+  experiment_name: fix_loss #for each experiment
+  # convert_to_song: True
   save_dir: samples
+  split: train # this is if you want to sample from the train or test set with no random z
