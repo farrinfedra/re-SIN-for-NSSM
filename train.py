@@ -23,8 +23,10 @@ def get_arguments():
     args = argparser.parse_args()
     return args
 
-def setup_logger():
-    logging.basicConfig(filename='training_log_fix_loss.log', level=logging.INFO,
+def setup_logger(config):
+    filename = os.path.join('logs', f'{config.train.logger_name}.log')
+    os.makedirs('logs', exist_ok=True)
+    logging.basicConfig(filename=filename, level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
 
@@ -33,7 +35,7 @@ def main():
     config = OmegaConf.load(args.config)
     
     tr_dataset = MusicDataset(config.dataset, split='train')
-    val_dataset = MusicDataset(config.dataset, split='test')
+    val_dataset = MusicDataset(config.dataset, split='valid')
     
     train_loader = DataLoader(tr_dataset, 
                             batch_size=config.train.batch_size, 
@@ -58,7 +60,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
 
     if not args.debug:
-        setup_logger()
+        setup_logger(config)
         
     if args.wandb:
         config_dict = OmegaConf.to_container(config, resolve=True)

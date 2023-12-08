@@ -102,42 +102,53 @@ class MusicDataset(Dataset):
                                                 batch_first=True, 
                                                 padding_value=0).to(dtype=torch.float32)
 
-        # masks = torch.zeros(( split_length, max_sequence_length, self.max_note ))
-        # masks = padded_all_music_one_hot != -1
     
         data_dict['encodings'] = padded_all_music_one_hot
         data_dict['sequence_lengths'] = sequence_lengths
-        # data_dict['masks'] = masks.to(dtype=torch.float32)
         
         return data_dict
     
-    def recon_to_midi(x_hat, x_orig=None):
+    def recon_to_midi(self, x_hat, x_orig=None, threshhold=0.5):
         """
         converts the reconstruction to midi
-        x_hat: (seq_len, 88)
-        (optional) x_orig: (seq_len, 88) #for training reconstruction
+        x_hat: (seq_len, 54)
+        (optional) x_orig: (seq_len, 54) #for training reconstruction
 
         """
         midis = []
+        x_hat[np.where(x_hat > threshhold)] = 1 
+        x_hat[np.where(x_hat <= threshhold)] = 0
         
+        x_hat[np.where(x_hat == 1)] = np.where(x_hat == 1)[1] + self.min_note
+        x_hat = x_hat.astype(int)
         
+        midis = []
+        for i in range(x_hat.shape[0]):
+            non_zero = np.nonzero(x_hat[i])
+            midis.append( tuple(x_hat[i][non_zero]) )
         
-        if x_orig:
+    
+        if x_orig is not None:
+            
+            x_orig = x_orig.detach().cpu().numpy()
             rows, cols = np.where(x_orig == 1)
-            midis_orig = []
+
             # Replace 1's with column indices
             for row, col in zip(rows, cols):
-                x_orig[row, col] = col + 21
+                x_orig[row, col] = col + self.min_note
+                
+            midis_orig = []
+            for i in range(x_orig.shape[0]):
+                non_zero = np.nonzero(x_orig[i])
+                midis_orig.append( tuple(x_orig[i][non_zero]) )
     
             midis_orig = [tuple(map(int, x)) for x in midis_orig]
             
         else:
             midis_orig = None
                 
-        return midis ,midis_orig
+        return midis, midis_orig
                 
-        
-        
         
         
     def get_max_sequence_length(self):

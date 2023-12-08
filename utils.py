@@ -24,19 +24,31 @@ def midi_to_song(data, file_name, experiment_name, mp3=False):
         time += duration
 
     # Write the MIDI file to disk
-    with open(f"{file_name}.mid", "wb") as output_file:
+    with open(os.path.join(experiment_name, f"{file_name}.mid"), "wb") as output_file:
         midi_file.writeFile(output_file)
 
-    path = os.path.join(experiment_name, f'{file_name}.wav')
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(experiment_name, exist_ok=True)
     
     # Synthesize MIDI to WAV using FluidSynth
     # fs = FluidSynth('path_to_soundfont.sf2')
-    fs.midi_to_audio(f'{file_name}.mid', f'{file_name}.wav')
+    fs.midi_to_audio(os.path.join(experiment_name, f'{file_name}.mid'), 
+                     os.path.join(experiment_name, f'{file_name}.wav'))
 
     # # Convert WAV to MP3
     if mp3:
-        audio = AudioSegment.from_wav(f'{file_name}.wav')
-        audio.export(f'{file_name}.mp3', format='mp3')
+        audio = AudioSegment.from_wav(os.path.join(experiment_name, f'{file_name}.wav'))
+        audio.export(os.path.join(experiment_name, f'{file_name}.mp3'), format='mp3')
     
     
+
+def log_midis(midi, orig_midi):
+    if orig_midi:
+        for i, (midi_key, midi_orig) in enumerate(zip(midi, orig_midi)):
+            print(f' recon_midi: {midi_key}')
+            print(f' orig_midi: {midi_orig}')
+            print('-------------------')
+            
+    else:
+        for i, midi_key  in enumerate(midi):
+            print(f' recon_midi: {midi_key}')
+            print('-------------------')

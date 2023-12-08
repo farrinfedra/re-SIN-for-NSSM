@@ -8,10 +8,10 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
     sum over the last dimension
 
     Args:
-        qm: tensor: (batch, dim): q mean
-        qv: tensor: (batch, dim): q variance
-        pm: tensor: (batch, dim): p mean
-        pv: tensor: (batch, dim): p variance
+        qm: tensor: (batch, sequence_dim, dim): q mean
+        qv: tensor: (batch, sequence_dim, dim): q variance
+        pm: tensor: (batch, sequence_dim, dim): p mean
+        pv: tensor: (batch, sequence_dim, dim): p variance
 
     Return:
         kl: tensor: (batch,): kl between each sample
@@ -28,7 +28,9 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths):
     mask = rearrange(mask, 'b s -> b s ()')
 
     kl = element_wise * mask.float()
-    kl = kl.sum(-1).sum(-1) #sum over latent_dim and t
+    kl = kl.sum(-1)
+    sum_T = sequence_lengths.float().sum(-1)
+    kl = kl / sum_T
     
     return kl
 
@@ -54,5 +56,9 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths):
     mask = rearrange(mask, 'b s -> b s ()')
     log_prob = log_prob.to(sequence_lengths.device)
     nll = log_prob * mask.float()
+    #take sum over latent and mean of sequence lenghts
+    nll = nll.sum(-1)
+    sum_T = sequence_lengths.float().sum(-1)
+    nll = nll / sum_T
     
-    return nll.sum(-1).sum(-1)
+    return nll

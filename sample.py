@@ -4,9 +4,8 @@ import os
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
-# torch.autograd.set_detect_anomaly(True)
+from utils import midi_to_song, log_midis
 
-import wandb
 import logging
 
 from dataloader import MusicDataset
@@ -19,7 +18,7 @@ def get_arguments():
     argparser.add_argument('--device', type=str, default='mps')
     argparser.add_argument('--seed', type=int, default=42)
     argparser.add_argument('--random', help='set true if sampling from random z', 
-                            action='store_true', default=True)
+                            action='store_true', default=False)
     argparser.add_argument('--index', type=int, default=0)
     
     args = argparser.parse_args()
@@ -33,11 +32,13 @@ def main():
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
                     latent_dim=config.model.latent_dim).to(args.device)
-    
+    dataset = MusicDataset(config.dataset, split=config.sample.split)
     #load weights
     ckpt_path = config.sample.ckpt_path
     ckpt = torch.load(ckpt_path, map_location=args.device)
-    model.load_state_dict(ckpt['model_state_dict'])
+    model.load_state_dict(ckpt)
+    
+    os.makedirs(config.sample.exp_name, exist_ok=True)
     
     if args.random:
         z = torch.randn(config.sample.num_samples, 
@@ -46,10 +47,10 @@ def main():
         length = config.sample.sequence_length
         
     else:
-        dataset = MusicDataset(config.dataset, split=config.sample.split)
+        
         dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
         x_orig = dataloader.dataset[args.index][0].to(args.device)
-        z = x_orig
+        z = x_orig.clone()
         z = z.unsqueeze(0) #shape: (1, seq_len, latent_dim)
         length = dataloader.dataset[args.index][1]
     
@@ -70,20 +71,23 @@ def main():
         if args.random:
             for i in range(config.sample.num_samples):
                 filename = f'random_sample_{i}'
-                midi, _ = dataset.recon_to_midi(x_hat[i], x_orig=None)
-                midi_to_song(midi, filename)
+                midi, orig_midi = dataset.recon_to_midi(x_hat=x_hat[i],
+                                                         x_orig=None, 
+                                                        threshhold=config.sample.threshhold) #orig_midi is none here
+                midi_to_song(midi, filename, config.sample.exp_name)
                 
         else: #sample from dataset
-            filename = f'sample_{config.sample.split}_{args.index}'
+            x_hat = x_hat.squeeze(0) #shape: (seq_len, 88)
+            filename = f'sample_{config.sample.split}_{args.index}_{config.sample.threshhold}'
             originial_filename = f'original_sample_{config.sample.split}_{args.index}'
-            midi, orig_midi = dataset.recon_to_midi(x_hat[0], x_orig=x_orig) #reconstruction to midi
-            midi_to_song(midi, filename)
-            midi_to_song(orig_midi, originial_filename)
+            midi, orig_midi = dataset.recon_to_midi(x_hat, x_orig=x_orig, threshhold=config.sample.threshhold) #reconstruction to midi
+            # print(f'midi: {midi}'), print(f'orig_midi: {orig_midi}')
+            midi_to_song(midi, filename, config.sample.exp_name)
+            midi_to_song(orig_midi, originial_filename, config.sample.exp_name)
+        
+        log_midis(midi, orig_midi)
+        print('Done!')
                 
-
-
-
-
 
 
 
