@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from utils import midi_to_song, log_midis
 from loss import kl_normal, log_bernoulli_with_logits
 import logging
-
+import torch.nn.functional as F
 from dataloader import MusicDataset
 from model import DVAE 
 
@@ -57,23 +57,44 @@ def main():
             
             kl_loss = kl_loss.sum(-1) #sum over T
             reconstruction_loss = reconstruction_loss.sum(-1) #sum over T
-            #for a:
+            
+            #for a: #importance sampling
+            z, mu_q, var_q = model.encoder(encodings)
+            loss_s = 
+            for s in range(config.test.S):
+                z_s = mu_q + torch.sqrt(var_q) * torch.randn_like(mu_q)
+                x_hat_s, mu_p, var_p = model.decoder(z_s)
+                
+                #binary cross entropy
+                log_s_recosntruction_loss = log_bernoulli_with_logits(encodings, x_hat_s, sequence_lengths, T_reduction='mean')
+                
+                #gaussian log prob p(z)
+                nll_p_z = F.gaussian_nll_loss(mu_p, z_s, var_p, reduction='none')
+                log_p_z = nll_p_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
+                
+                #gaussian log prob q(z|x)
+                nll_q_z = F.gaussian_nll_loss(mu_q, z_s, var_q, reduction='none')
+                log_q_z = nll_q_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
+                
+                loss_s = log_s_recosntruction_loss + log_p_z - log_q_z
+                
+            
             
             #for b:
             nelbo_matrix = reconstruction_loss + kl_loss
             nelbo_matrix = nelbo_matrix.sum(-1) #sum over batch_size
             sequence_lengths_sum = sequence_lengths.sum(-1)
-            nelbo = nelbo_matrix / sequence_lengths_sum
+            nelbo_b = nelbo_matrix / sequence_lengths_sum
             
             #for c:
             #divide each sample in batch by its sequence length
-            nelbo = reconstruction_loss + kl_loss
-            nelbo = nelbo / sequence_lengths.float()
+            nelbo_c = reconstruction_loss + kl_loss
+            nelbo_c = nelbo_c / sequence_lengths.float()
             #take mean over batch
-            nelbo = nelbo.mean(-1)
+            nelbo_c = nelbo_c.mean(-1)
             
             # nelbo = nelbo.mean()
-            val_epoch_loss += nelbo.item()
+
             
         if not args.debug:
             logging.info('=' * 50)
