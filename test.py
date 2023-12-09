@@ -10,6 +10,8 @@ import logging
 import torch.nn.functional as F
 from dataloader import MusicDataset
 from model import DVAE 
+from einops import repeat, rearrange
+
 
 
 def get_arguments():
@@ -60,25 +62,36 @@ def main():
             
             #for a: #importance sampling
             z, mu_q, var_q = model.encoder(encodings)
-            loss_s = 
+            bs = encodings.shape[0]
+            max_sequence_length = encodings.shape[1]
+            loss_s = torch.zeros(bs)
             for s in range(config.test.S):
                 z_s = mu_q + torch.sqrt(var_q) * torch.randn_like(mu_q)
                 x_hat_s, mu_p, var_p = model.decoder(z_s)
+
+                range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device) #shape: (batch, seq_len)
+                mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
+                mask = mask.to(sequence_lengths.device)
+                mask = rearrange(mask, 'b s -> b s ()') #shape : (bs, seq_len, latent_dim)
                 
                 #binary cross entropy
-                log_s_recosntruction_loss = log_bernoulli_with_logits(encodings, x_hat_s, sequence_lengths, T_reduction='mean')
+                log_s_recosntruction_loss = log_bernoulli_with_logits(encodings, x_hat_s, sequence_lengths, T_reduction='sum')
                 
                 #gaussian log prob p(z)
                 nll_p_z = F.gaussian_nll_loss(mu_p, z_s, var_p, reduction='none')
+                nll_p_z = nll_p_z * mask.float()
                 log_p_z = nll_p_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
                 
                 #gaussian log prob q(z|x)
                 nll_q_z = F.gaussian_nll_loss(mu_q, z_s, var_q, reduction='none')
+                nll_q_z = nll_q_z * mask.float()
                 log_q_z = nll_q_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
                 
-                loss_s = log_s_recosntruction_loss + log_p_z - log_q_z
-                
-            
+                loss_s += torch.exp(-(log_s_recosntruction_loss + log_p_z - log_q_z))
+            loss_s /= config.test.S
+            loss_s = torch.log(loss_s)
+            loss_s = -loss_s.mean(0)
+
             
             #for b:
             nelbo_matrix = reconstruction_loss + kl_loss
