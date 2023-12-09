@@ -5,7 +5,7 @@ import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 from utils import midi_to_song, log_midis
-from loss import kl_normal, log_bernoulli_with_logits
+from loss import kl_normal, log_bernoulli_with_logits, importance_sampling
 import logging
 import torch.nn.functional as F
 from dataloader import MusicDataset
@@ -13,6 +13,11 @@ from model import DVAE
 from einops import repeat, rearrange
 
 
+def setup_logger(config, rand):
+    filename = 'testinggggg.log'
+    os.makedirs('logs', exist_ok=True)
+    logging.basicConfig(filename=filename, level=logging.INFO,
+                        format='%(asctime)s:%(levelname)s:%(message)s')
 
 def get_arguments():
     argparser = argparse.ArgumentParser()
@@ -21,7 +26,6 @@ def get_arguments():
     argparser.add_argument('--seed', type=int, default=42)
     argparser.add_argument('--random', help='set true if sampling from random z', 
                             action='store_true', default=False)
-    argparser.add_argument('--index', type=int, default=0)
     
     args = argparser.parse_args()
     return args
@@ -29,11 +33,16 @@ def get_arguments():
 def main():
     args = get_arguments()
     config = OmegaConf.load(args.config)
+    
     model = DVAE(input_dim=config.model.input_dim, 
                     hidden_dim=config.model.hidden_dim,
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
-                    latent_dim=config.model.latent_dim).to(args.device)
+                    latent_dim=config.model.latent_dim,
+                    dropout=config.model.dropout,
+                    combiner_type=config.model.combiner_type,
+                    rnn_type=config.model.rnn_type).to(args.device)
+    
     dataset = MusicDataset(config.dataset, split=config.sample.split)
     dataloader = DataLoader(dataset, batch_size=config.test.batch_size, shuffle=False)
     #load weights
@@ -41,11 +50,24 @@ def main():
     ckpt = torch.load(ckpt_path, map_location=args.device)
     model.load_state_dict(ckpt)
     
+    setup_logger(config, rand=0)
+    
     model.eval()
-    val_epoch_loss = 0
+
+    a = 0
+    b = 0
+    c = 0
+    total_nelbo_b = 0
+    total_sequence_lengths_sum = 0
+    total_nelbo_c = 0
+    total_count = 0
+    
     with torch.no_grad():   
         for j, (encodings, sequence_lengths) in enumerate(dataloader):
+            
             encodings = encodings.to(args.device)
+            sequence_lengths = sequence_lengths.to(args.device)
+            
             x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
             
             #get loss with only sum over latent dim dimension
@@ -61,43 +83,16 @@ def main():
             reconstruction_loss = reconstruction_loss.sum(-1) #sum over T
             
             #for a: #importance sampling
-            z, mu_q, var_q = model.encoder(encodings)
-            bs = encodings.shape[0]
-            max_sequence_length = encodings.shape[1]
-            loss_s = torch.zeros(bs)
-            for s in range(config.test.S):
-                z_s = mu_q + torch.sqrt(var_q) * torch.randn_like(mu_q)
-                x_hat_s, mu_p, var_p = model.decoder(z_s)
-
-                range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device) #shape: (batch, seq_len)
-                mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
-                mask = mask.to(sequence_lengths.device)
-                mask = rearrange(mask, 'b s -> b s ()') #shape : (bs, seq_len, latent_dim)
-                
-                #binary cross entropy
-                log_s_recosntruction_loss = log_bernoulli_with_logits(encodings, x_hat_s, sequence_lengths, T_reduction='sum')
-                
-                #gaussian log prob p(z)
-                nll_p_z = F.gaussian_nll_loss(mu_p, z_s, var_p, reduction='none')
-                nll_p_z = nll_p_z * mask.float()
-                log_p_z = nll_p_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
-                
-                #gaussian log prob q(z|x)
-                nll_q_z = F.gaussian_nll_loss(mu_q, z_s, var_q, reduction='none')
-                nll_q_z = nll_q_z * mask.float()
-                log_q_z = nll_q_z.sum(-1).sum(-1) #sum over latent dim and T #final shape (batch,)
-                
-                loss_s += torch.exp(-(log_s_recosntruction_loss + log_p_z - log_q_z))
-            loss_s /= config.test.S
-            loss_s = torch.log(loss_s)
-            loss_s = -loss_s.mean(0)
-
+            loss_s = importance_sampling(model, encodings, sequence_lengths, S=config.test.S)
+            a += loss_s
             
             #for b:
             nelbo_matrix = reconstruction_loss + kl_loss
             nelbo_matrix = nelbo_matrix.sum(-1) #sum over batch_size
             sequence_lengths_sum = sequence_lengths.sum(-1)
             nelbo_b = nelbo_matrix / sequence_lengths_sum
+            b += nelbo_b
+            
             
             #for c:
             #divide each sample in batch by its sequence length
@@ -105,16 +100,43 @@ def main():
             nelbo_c = nelbo_c / sequence_lengths.float()
             #take mean over batch
             nelbo_c = nelbo_c.mean(-1)
+            c += nelbo_c
             
-            # nelbo = nelbo.mean()
-
-            
-        if not args.debug:
+       
             logging.info('=' * 50)
-            logging.info(f'Validation Summary:\nEpoch: {epoch}, '
-                        f'\nval_Iteration: {i}, '
-                        f'\nval_NELBO: {nelbo.item()}, '
-                        f'\nval_Reconstruction Loss: {reconstruction_loss.mean().item()}, '
-                        f'\nval_KL Loss: {kl_loss.mean().item()}')
-                
-    avg_val_loss = val_epoch_loss / len(val_loader)
+            logging.info(
+                f'Testing Summary:\n'
+                f'Iteration: {j}, '
+                f'\na: {loss_s.item()}, '
+                f'\n(b): {nelbo_b.item()}, '
+                f'\nc: {nelbo_c.item()}'
+            )
+    
+    total_nelbo_b += nelbo_matrix.sum().item()
+    total_sequence_lengths_sum += sequence_lengths.sum().item()
+    
+    total_nelbo_c += nelbo_c.sum().item()
+    total_count += sequence_lengths.size(0)
+    
+    final_b = total_nelbo_b / total_sequence_lengths_sum
+    final_c = total_nelbo_c / total_count
+    
+    # logging.info('=' * 50)
+    # logging.info(
+    #     f'Final Testing Summary:\n'
+    #     f'a: {a.item() / len(dataloader)}, '
+    #     f'\n(b): {b.item() / len(dataloader)}, '
+    #     f'\nc: {c.item() / len(dataloader)}'
+    # )
+    logging.info('=' * 50)
+    logging.info(
+        f'Final Testing Summary:\n'
+        f'a: {a.item() / len(dataloader)}, '
+        f'\n(b): {final_b}, '
+        f'\nc: {final_c}'
+    )
+    logging.info('=' * 50)
+    
+    
+if __name__ == '__main__':
+    main()

@@ -31,7 +31,11 @@ def main():
                     hidden_dim=config.model.hidden_dim,
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
-                    latent_dim=config.model.latent_dim).to(args.device)
+                    latent_dim=config.model.latent_dim,
+                    dropout=config.model.dropout,
+                    combiner_type=config.model.combiner_type,
+                    rnn_type=config.model.rnn_type).to(args.device)
+    
     dataset = MusicDataset(config.dataset, split=config.sample.split)
     #load weights
     ckpt_path = config.sample.ckpt_path

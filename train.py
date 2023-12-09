@@ -11,7 +11,7 @@ import logging
 from dataloader import MusicDataset
 from model import DVAE 
 from loss import kl_normal, log_bernoulli_with_logits
-
+import random
 
 
 def get_arguments():
@@ -25,14 +25,17 @@ def get_arguments():
     args = argparser.parse_args()
     return args
 
-def setup_logger(config):
-    filename = os.path.join('logs', f'{config.train.logger_name}.log')
+def setup_logger(config, rand):
+    filename = os.path.join('logs', f'{config.train.logger_name}_{rand}.log')
     os.makedirs('logs', exist_ok=True)
     logging.basicConfig(filename=filename, level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
-
 def main():
+    
+    rand = random.randint(1000, 9999)
+    print(f'Random Seed: {rand}')
+    
     args = get_arguments()
     config = OmegaConf.load(args.config)
     
@@ -57,17 +60,22 @@ def main():
                     hidden_dim_em=config.model.hidden_dim_em, 
                     hidden_dim_tr=config.model.hidden_dim_tr, 
                     latent_dim=config.model.latent_dim,
+                    dropout=config.model.dropout,
                     combiner_type=config.model.combiner_type,
                     rnn_type=config.model.rnn_type).to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
 
+    torch.manual_seed(args.seed)
+    
+    
     if not args.debug:
-        setup_logger(config)
+        setup_logger(config, rand)
         
     if args.wandb:
+        config.train.rand = rand
         config_dict = OmegaConf.to_container(config, resolve=True)
-        wandb.init(project=config.train.proj_name, 
+        wandb.init(project=f'{config.train.proj_name}_{rand}', 
                    entity=config.train.wandb_user_name,
                    config=config_dict)
         
@@ -75,7 +83,7 @@ def main():
         logging.info('Training Started')
         
         
-    step_per_epoch = len(tr_dataset) / config.train.batch_size
+    step_per_epoch = len(tr_dataset) // config.train.batch_size
     total_annealing_steps = step_per_epoch * config.train.annealing_epochs
     annealing_rate = 1.0 / total_annealing_steps 
     kl_weight = 0.0  # Start with 0 
@@ -156,9 +164,10 @@ def main():
                 x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
                 
                 reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths,  T_reduction='mean')
+                
                 kl_loss = kl_normal(mus_inference, 
                                     sigmas_inference, 
-                                    mus_generator, 
+                                    mus_generator,  
                                     sigmas_generators, 
                                     sequence_lengths,
                                     T_reduction='mean')
@@ -196,9 +205,11 @@ def main():
             best_model = model
             
         if config.train.save_model and epoch % config.train.save_every == 0:
-            os.makedirs(config.train.save_dir, exist_ok=True)
-            file_name = os.path.join(config.train.save_dir, 'best_model_{epoch}.pt')
+            save_dir = f'{config.train.save_dir}_{rand}'
+            os.makedirs(save_dir, exist_ok=True)
+            file_name = os.path.join(save_dir, f'best_model_{epoch}.pt')
             torch.save(best_model.state_dict(), file_name)
+            logging.info(f'Saved Model at {save_dir}/{file_name}')
         
     print(f"Finished Training for {config.train.epochs} epochs")
     

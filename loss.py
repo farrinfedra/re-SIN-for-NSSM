@@ -64,6 +64,7 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
     mask = rearrange(mask, 'b s -> b s ()')
     log_prob = log_prob.to(sequence_lengths.device)
     nll = log_prob * mask.float()
+    
     #take sum over latent and mean of sequence lenghts
     nll = nll.sum(-1) #sum over latent dim
     # sum_T = sequence_lengths.float().sum(-1)
@@ -75,3 +76,42 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
         nll = nll.sum(-1)
     
     return nll
+
+
+def importance_sampling(model, encodings, sequence_lengths, S):
+    z, mu_q, var_q = model.encoder(encodings)
+    bs = encodings.shape[0]
+    max_sequence_length = encodings.shape[1]
+    loss_s = torch.zeros(bs)
+    all_exponent_args = []
+    
+    for _ in range(S):
+        z_s = mu_q + torch.sqrt(var_q) * torch.randn_like(mu_q)
+        x_hat_s, mu_p, var_p = model.decoder(z_s)
+
+        range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device) #shape: (batch, seq_len)
+        mask = range_tensor < rearrange(sequence_lengths, 'b -> b ()')
+        mask = mask.to(sequence_lengths.device)
+        mask = rearrange(mask, 'b s -> b s ()') #shape : (bs, seq_len, latent_dim)
+        
+        #binary cross entropy
+        log_s_recosntruction_loss = log_bernoulli_with_logits(encodings, x_hat_s, sequence_lengths, T_reduction='mean')
+        
+        #gaussian log prob p(z)
+        nll_p_z = F.gaussian_nll_loss(mu_p, z_s, var_p, reduction='none')
+        nll_p_z = nll_p_z * mask.float()
+        log_p_z = nll_p_z.sum(-1).mean(-1) #sum over latent dim and T #final shape (batch,)
+        
+        #gaussian log prob q(z|x)
+        nll_q_z = F.gaussian_nll_loss(mu_q, z_s, var_q, reduction='none')
+        nll_q_z = nll_q_z * mask.float()
+        log_q_z = nll_q_z.sum(-1).mean(-1) #sum over latent dim and T #final shape (batch,)
+        
+        # loss_s += torch.exp(-(log_s_recosntruction_loss + log_p_z - log_q_z))
+        exponent_arg = -(log_s_recosntruction_loss + log_p_z - log_q_z)
+        all_exponent_args.append(exponent_arg)
+            
+        
+    loss_s = -torch.logsumexp(torch.stack(all_exponent_args), dim=0) + torch.log(torch.tensor(S, dtype=torch.float))
+    loss_s = loss_s.mean()
+    return loss_s

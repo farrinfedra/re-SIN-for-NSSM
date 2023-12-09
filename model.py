@@ -11,8 +11,10 @@ class DVAE(nn.Module):
                     hidden_dim_em=100, 
                     hidden_dim_tr=200, 
                     latent_dim=100,
+                    dropout=0.1,
                     combiner_type='dks',
                     rnn_type='rnn',
+                    
                     ):
         super(DVAE, self).__init__()
         
@@ -22,12 +24,14 @@ class DVAE(nn.Module):
         self.hidden_dim_tr = hidden_dim_tr
         self.latent_dim = latent_dim
         self.output_dim = input_dim
+        self.dropout = dropout
         self.combiner_type = combiner_type
         self.rnn_type = rnn_type
         
         self.encoder = Inference(self.input_dim, 
                                 self.hidden_dim, 
                                 self.latent_dim,
+                                self.dropout,
                                 self.combiner_type,
                                 self.rnn_type)
         
@@ -67,17 +71,23 @@ class DKSCombiner(nn.Module): #DKS
 
     def forward(self, h_right, h_left=None):
         #shape Z: (batch_size, seq_len, latent_dim)
-        b, seq_len, _ = h_right.shape
+        if h_right is not None:
+            b, seq_len, _ = h_right.shape
+            device = h_right.device
+            
+        else:
+            b, seq_len, _ = h_left.shape
+            device = h_left.device
         # Z = torch.zeros(h_right.shape[0], h_right.shape[1] + 1, self.latent_dim).to(h_right.device)
         # mus, sigmas = torch.zeros((b, seq_len, self.latent_dim)), \
                         # torch.ones((b, seq_len, self.latent_dim))
         
         mus = []
         sigmas = []
-        z_init = torch.zeros( (b, 1, self.latent_dim) ).to(h_right.device) #TODO: changed to 0
+        z_init = torch.zeros( (b, 1, self.latent_dim) ).to(device) #TODO: changed to 0
         Z = [z_init]
         
-        for t in range(1, h_right.shape[1] + 1):
+        for t in range(1, seq_len + 1):
             z_prev = Z[-1].squeeze(1) #shape: (batch_size, latent_dim)
             
             h_combined = self.combiner(z_prev)
@@ -162,21 +172,24 @@ class MeanFieldCombiner(nn.Module): #MF
         
 
 class Inference(nn.Module):
-    def __init__(self, input_dim, hidden_dim=400, latent_dim=100, combiner_type='dks', rnn_type='rnn'):
+    def __init__(self, input_dim, hidden_dim=400, latent_dim=100, dropout=0.1, combiner_type='dks', rnn_type='rnn'):
         super(Inference, self).__init__()
         self.hidden_size = hidden_dim
         self.latent_dim = latent_dim
+        self.dropout = dropout
         self.combiner_type = combiner_type
         self.rnn_type = rnn_type
         
         if self.rnn_type == 'rnn':
             self.rnn = torch.nn.RNN(input_size=input_dim, 
                                     hidden_size=hidden_dim, 
+                                    dropout=self.dropout,
                                     bidirectional=True, 
                                     batch_first=True)
         elif self.rnn_type == 'lstm':
             self.rnn = torch.nn.LSTM(input_size=input_dim, 
-                                    hidden_size=hidden_dim, 
+                                    hidden_size=hidden_dim,
+                                    dropout=self.dropout, 
                                     bidirectional=True, 
                                     batch_first=True)
         else:

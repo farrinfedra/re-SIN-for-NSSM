@@ -11,40 +11,40 @@ dataset:
 
 model:
   input_dim: 88
-  hidden_dim: 400
+  hidden_dim: 600
   hidden_dim_em: 100 
   hidden_dim_tr: 200 
   latent_dim: 100
   combiner_type: 'dks'
-  rnn_type: 'rnn'
+  rnn_type: 'lstm'
+  dropout: 0.0
 
 train:
-  epochs: 100
+  epochs: 200
   batch_size: 64
-  num_workers: 4
+  num_workers: 5
   lr: 0.0008 #TODO: adjust this
-  annealing_epochs: 50
+  annealing_epochs: 20
   annealing: True
   save_model: True
   save_dir: test
-  save_every: 50
-  logger_name: test #for logger
+  save_every: 20
+  logger_name: lstm_600_annealing_20 #for logger
 
-  proj_name: test_implementation #for wandb
+  proj_name: lstm_600_annealing_20 #for wandb
   wandb_user_name: farrinsofian #for wandb
 
 test:
-  ckpt_path: saved_models_dks_mean_T/dvae_model_100.pt
+  ckpt_path: test_3782/best_model_160.pt
   batch_size: 64 
   save_dir: audio_samples
-  split: test 
+  split: test
+  S: 3
 
 sample:
-  ckpt_path: saved_models_dks_annealing/dvae_model_50.pt
+  ckpt_path: test_3782/best_model_160.pt
   num_samples: 1
   sequence_length: 40
   exp_name: annealing #for each experiment
   threshhold: 0.3
-  # convert_to_song: True
-  save_dir: audio_samples
   split: train # this is if you want to sample from the train or test set with no random z
