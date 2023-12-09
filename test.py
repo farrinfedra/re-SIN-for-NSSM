@@ -4,13 +4,14 @@ import os
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
-from utils import midi_to_song, log_midis
+from utils import midi_to_song, log_midis, collate_fn
 from loss import kl_normal, log_bernoulli_with_logits, importance_sampling
 import logging
 import torch.nn.functional as F
 from dataloader import MusicDataset
 from model import DVAE 
 from einops import repeat, rearrange
+
 
 
 def setup_logger(config, rand):
@@ -44,7 +45,10 @@ def main():
                     rnn_type=config.model.rnn_type).to(args.device)
     
     dataset = MusicDataset(config.dataset, split=config.sample.split)
-    dataloader = DataLoader(dataset, batch_size=config.test.batch_size, shuffle=False)
+    dataloader = DataLoader(dataset, 
+                            batch_size=config.test.batch_size,
+                            collate_fn=collate_fn,  
+                            shuffle=False)
     #load weights
     ckpt_path = config.test.ckpt_path
     ckpt = torch.load(ckpt_path, map_location=args.device)
@@ -66,7 +70,7 @@ def main():
             encodings = encodings.to(args.device)
             sequence_lengths = sequence_lengths.to(args.device)
             
-            x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
+            x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings, sequence_lengths)
             
             #get loss with only sum over latent dim dimension
             reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths, T_reduction='none') 

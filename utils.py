@@ -5,6 +5,7 @@ import numpy as np
 from midiutil import MIDIFile
 from pydub import AudioSegment
 from midi2audio import FluidSynth
+from torch.nn.utils.rnn import pad_sequence
 import os
 
 def midi_to_song(data, file_name, experiment_name, mp3=False):
@@ -52,3 +53,12 @@ def log_midis(midi, orig_midi):
         for i, midi_key  in enumerate(midi):
             print(f' recon_midi: {midi_key}')
             print('-------------------')
+            
+
+
+
+def collate_fn(batch):
+    sequences, lengths = zip(*batch)
+    sequences_padded = pad_sequence(sequences, batch_first=True, padding_value=0)
+    lengths = torch.tensor(lengths)
+    return sequences_padded, lengths

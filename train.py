@@ -12,6 +12,7 @@ from dataloader import MusicDataset
 from model import DVAE 
 from loss import kl_normal, log_bernoulli_with_logits
 import random
+from utils import collate_fn
 
 
 def get_arguments():
@@ -46,11 +47,13 @@ def main():
                             batch_size=config.train.batch_size, 
                             num_workers=config.train.num_workers,
                             pin_memory=True, #important for speed
+                            collate_fn=collate_fn,
                             shuffle=True)
     
     val_loader = DataLoader(val_dataset, 
                         batch_size=config.train.batch_size, 
                         num_workers=config.train.num_workers,
+                        collate_fn=collate_fn,
                         pin_memory=True)
                         # shuffle=True)
     
@@ -101,7 +104,8 @@ def main():
             sequence_lengths = sequence_lengths.to(device)
             optimizer.zero_grad()
             
-            x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
+            x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = \
+                                                model(encodings, sequence_lengths)
             
             reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths, T_reduction='mean')
             
@@ -161,7 +165,7 @@ def main():
         with torch.no_grad():   
             for j, (encodings, sequence_lengths) in enumerate(val_loader):
                 encodings = encodings.to(device)
-                x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings)
+                x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generators = model(encodings, sequence_lengths)
                 
                 reconstruction_loss = log_bernoulli_with_logits(encodings, x_hat, sequence_lengths,  T_reduction='mean')
                 

@@ -5,6 +5,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 import requests
 import os
+import torch.nn.functional as F
 
 
 class MusicDataset(Dataset):
@@ -97,14 +98,11 @@ class MusicDataset(Dataset):
         #pad music in all_music_one_hot with zeros until max_sequence_length with -1
         assert len(all_music_one_hot_list) == len(split_data)
         # max_sequence_length = max(sequence_lengths)
-        # split_length = len(split_data)
+        # split_length = len(split_data))
 
-        padded_all_music_one_hot = pad_sequence([torch.tensor(music) for music in all_music_one_hot_list], 
-                                                batch_first=True, 
-                                                padding_value=0).to(dtype=torch.float32)
+        all_music_tensors = [torch.tensor(music, dtype=torch.float32) for music in all_music_one_hot_list]
 
-    
-        data_dict['encodings'] = padded_all_music_one_hot
+        data_dict['encodings'] = all_music_tensors
         data_dict['sequence_lengths'] = sequence_lengths
         
         return data_dict
@@ -156,8 +154,10 @@ class MusicDataset(Dataset):
         return max(self.sequence_lengths)
     
     def __getitem__(self, index):
-        return self.encodings[index], self.sequence_lengths[index]
-        #encodings dim: (bs, seq_len, 88)
+        encodings = self.encodings[index]
+        sequence_length = self.sequence_lengths[index]
+        return encodings, sequence_length
+
     def __len__(self):
         return len(self.encodings)
     

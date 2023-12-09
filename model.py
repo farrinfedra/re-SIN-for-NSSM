@@ -3,6 +3,8 @@ import numpy as np
 from torch import nn
 from utils import *
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
 
 class DVAE(nn.Module):
     def __init__(self, 
@@ -40,8 +42,8 @@ class DVAE(nn.Module):
                                 self.hidden_dim_tr, 
                                 self.output_dim)
 
-    def forward(self, x):
-        z, mus_inference, sigmas_inference = self.encoder(x)
+    def forward(self, x, sequence_lengths):
+        z, mus_inference, sigmas_inference = self.encoder(x, sequence_lengths)
         x_hat, mus_generator, sigmas_generator = self.decoder(z)
         return x_hat, mus_inference, sigmas_inference, mus_generator, sigmas_generator
 
@@ -205,8 +207,17 @@ class Inference(nn.Module):
         else:
             raise NotImplementedError(f'combiner_type: {self.combiner_type} not implemented')
 
-    def forward(self, x):
-        out, hidden = self.rnn(x)
+    def forward(self, x, seq_lengths):
+        
+        seq_lengths = seq_lengths.detach().cpu().numpy()
+        x_packed = pack_padded_sequence(x, seq_lengths, batch_first=True, enforce_sorted=False)
+        out_packed, hidden = self.rnn(x_packed)
+
+        if self.rnn_type == 'lstm':
+            out, _ = pad_packed_sequence(out_packed, batch_first=True)
+        else:
+            out = out_packed.data
+        
         self.h_left = out[:, :, :self.hidden_size]
         self.h_right = out[:, :, self.hidden_size:]
         

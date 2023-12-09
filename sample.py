@@ -4,7 +4,7 @@ import os
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
-from utils import midi_to_song, log_midis
+from utils import midi_to_song, log_midis, collate_fn
 
 import logging
 
@@ -52,12 +52,12 @@ def main():
         
     else:
         
-        dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=1, collate_fn=collate_fn,  shuffle=False)
         x_orig = dataloader.dataset[args.index][0].to(args.device)
         z = x_orig.clone()
         z = z.unsqueeze(0) #shape: (1, seq_len, latent_dim)
         length = dataloader.dataset[args.index][1]
-    
+        sequence_length = torch.tensor(dataloader.dataset[args.index][1]).unsqueeze(0).to(args.device)
     #sample
     model.eval()
     with torch.no_grad():
@@ -65,7 +65,7 @@ def main():
         if args.random:
             x_hat, _, _ = model.decoder(z) 
         else:
-            x_hat, _, _, _, _ = model(z) #x_hat shape: (bs, seq_len, 88)
+            x_hat, _, _, _, _ = model(z, sequence_length) #x_hat shape: (bs, seq_len, 88)
         
         x_hat = x_hat.detach().cpu().numpy() 
         

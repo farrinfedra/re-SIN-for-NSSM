@@ -18,6 +18,7 @@ model:
   combiner_type: 'st-lr'
   rnn_type: 'lstm'
   dropout: 0.0
+  rnn_layers: 2
 
 train:
   epochs: 200
@@ -29,20 +30,20 @@ train:
   save_model: True
   save_dir: test
   save_every: 20
-  logger_name: lstm_600_st-lr #for logger
+  logger_name: lstm_600_st-lr_fixed_rnn #for logger
 
-  proj_name: lstm_600_st-lr #for wandb
+  proj_name: lstm_600_st-lr_fixed_rnn #for wandb
   wandb_user_name: farrinsofian #for wandb
 
 test:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: test_4111/best_model_40.pt
   batch_size: 64 
   save_dir: audio_samples
   split: train
   S: 3
 
 sample:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: test_4111/best_model_40.pt
   num_samples: 1
   sequence_length: 40
   exp_name: st-lr #for each experiment

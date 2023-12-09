@@ -79,7 +79,7 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
 
 
 def importance_sampling(model, encodings, sequence_lengths, S):
-    z, mu_q, var_q = model.encoder(encodings)
+    z, mu_q, var_q = model.encoder(encodings, sequence_lengths)
     bs = encodings.shape[0]
     max_sequence_length = encodings.shape[1]
     loss_s = torch.zeros(bs)
