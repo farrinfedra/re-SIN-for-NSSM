@@ -29,7 +29,7 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths, T_reduction='mean'):
 
     kl = element_wise * mask.float()
     kl = kl.sum(-1) #sum over latent dim
-    # sum_T = sequence_lengths.float().sum(-1)
+
     if T_reduction == 'none':
         kl = kl
         

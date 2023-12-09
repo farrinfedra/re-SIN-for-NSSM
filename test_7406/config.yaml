@@ -1,0 +1,45 @@
+dataset:
+  download_first: false
+  urls:
+  - jsb_chorales.pickle: https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/jsb_chorales.pickle
+  - piano_midi.pickle: https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/piano_midi.pickle
+  - muse_data.pickle: https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/muse_data.pickle
+  - nottingham.pickle: https://d2hg8soec8ck9v.cloudfront.net/datasets/polyphonic/nottingham.pickle
+  path: data/jsb_chorales.pickle
+  split: train
+model:
+  input_dim: 88
+  hidden_dim: 600
+  hidden_dim_em: 100
+  hidden_dim_tr: 200
+  latent_dim: 100
+  combiner_type: st-lr
+  rnn_type: lstm
+  dropout: 0.0
+train:
+  epochs: 200
+  batch_size: 64
+  num_workers: 5
+  lr: 0.0008
+  annealing_epochs: 20
+  annealing: false
+  save_model: true
+  save_dir: test
+  save_every: 20
+  logger_name: lstm_600_st-lr
+  proj_name: lstm_600_st-lr
+  wandb_user_name: farrinsofian
+  rand: 7406
+test:
+  ckpt_path: test_7789/best_model_200.pt
+  batch_size: 64
+  save_dir: audio_samples
+  split: train
+  S: 3
+sample:
+  ckpt_path: test_7789/best_model_200.pt
+  num_samples: 1
+  sequence_length: 40
+  exp_name: st-lr
+  threshhold: 0.3
+  split: train

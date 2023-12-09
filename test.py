@@ -57,9 +57,7 @@ def main():
     a = 0
     b = 0
     c = 0
-    total_nelbo_b = 0
-    total_sequence_lengths_sum = 0
-    total_nelbo_c = 0
+    sequence_lengths_sum = 0
     total_count = 0
     
     with torch.no_grad():   
@@ -88,9 +86,9 @@ def main():
             
             #for b:
             nelbo_matrix = reconstruction_loss + kl_loss
-            nelbo_matrix = nelbo_matrix.sum(-1) #sum over batch_size
-            sequence_lengths_sum = sequence_lengths.sum(-1)
-            nelbo_b = nelbo_matrix / sequence_lengths_sum
+            nelbo_b = nelbo_matrix.sum(-1) #sum over batch_size
+            sequence_lengths_sum += sequence_lengths.sum(-1)
+            # nelbo_b = nelbo_matrix / sequence_lengths_sum
             b += nelbo_b
             
             
@@ -99,7 +97,8 @@ def main():
             nelbo_c = reconstruction_loss + kl_loss
             nelbo_c = nelbo_c / sequence_lengths.float()
             #take mean over batch
-            nelbo_c = nelbo_c.mean(-1)
+            nelbo_c = nelbo_c.sum(-1) #over batch
+            total_count += sequence_lengths.shape[0]
             c += nelbo_c
             
        
@@ -112,28 +111,17 @@ def main():
                 f'\nc: {nelbo_c.item()}'
             )
     
-    total_nelbo_b += nelbo_matrix.sum().item()
-    total_sequence_lengths_sum += sequence_lengths.sum().item()
+    final_b = b / sequence_lengths_sum
+    final_c = c / total_count
     
-    total_nelbo_c += nelbo_c.sum().item()
-    total_count += sequence_lengths.size(0)
-    
-    final_b = total_nelbo_b / total_sequence_lengths_sum
-    final_c = total_nelbo_c / total_count
-    
-    # logging.info('=' * 50)
-    # logging.info(
-    #     f'Final Testing Summary:\n'
-    #     f'a: {a.item() / len(dataloader)}, '
-    #     f'\n(b): {b.item() / len(dataloader)}, '
-    #     f'\nc: {c.item() / len(dataloader)}'
-    # )
     logging.info('=' * 50)
     logging.info(
         f'Final Testing Summary:\n'
         f'a: {a.item() / len(dataloader)}, '
-        f'\n(b): {final_b}, '
-        f'\nc: {final_c}'
+        # f'\n(b): {b.item() / len(dataloader)}, '
+        f'\n(b): {final_b.item()},'
+        # f'\nc: {c.item() / len(dataloader)}'
+        f'final_c: {final_c.item()}'
     )
     logging.info('=' * 50)
     

@@ -210,6 +210,10 @@ def main():
             file_name = os.path.join(save_dir, f'best_model_{epoch}.pt')
             torch.save(best_model.state_dict(), file_name)
             logging.info(f'Saved Model at {save_dir}/{file_name}')
+            #save the config file in the folder if it already doesnt exist
+            if not os.path.exists(os.path.join(save_dir, 'config.yaml')):
+                OmegaConf.save(config, os.path.join(save_dir, 'config.yaml'))
+                logging.info(f'Saved Config at {save_dir}/config.yaml')
         
     print(f"Finished Training for {config.train.epochs} epochs")
     
