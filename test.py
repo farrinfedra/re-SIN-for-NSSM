@@ -23,7 +23,7 @@ def setup_logger(config, rand):
 def get_arguments():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str, default='config.yaml')
-    argparser.add_argument('--device', type=str, default='mps')
+    argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--seed', type=int, default=42)
     argparser.add_argument('--random', help='set true if sampling from random z', 
                             action='store_true', default=False)

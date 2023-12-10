@@ -13,7 +13,7 @@ model:
   hidden_dim_em: 100
   hidden_dim_tr: 200
   latent_dim: 100
-  combiner_type: st-lr
+  combiner_type: dks
   rnn_type: lstm
   dropout: 0.0
   rnn_layers: 2
@@ -27,19 +27,20 @@ train:
   save_model: true
   save_dir: test
   save_every: 20
-  logger_name: lstm_600_st-lr_fixed_rnn
-  proj_name: lstm_600_st-lr_fixed_rnn
-  wandb_user_name: farrinsofian
+  logger_name: lstm_dks_600
+  proj_name: lstm_dks_600
+  wandb_user_name: arghavanrez
+  rand: 2076
 test:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: test_4035/best_model_40.pt
   batch_size: 64
   save_dir: audio_samples
   split: train
   S: 3
 sample:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: test_4035/best_model_40.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: st-lr
+  exp_name: dks
   threshhold: 0.3
   split: train

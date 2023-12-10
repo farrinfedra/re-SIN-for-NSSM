@@ -34,7 +34,7 @@ def kl_normal(qm, qv, pm, pv, sequence_lengths, T_reduction='mean'):
         kl = kl
         
     elif T_reduction == 'mean':
-        kl = kl.mean(-1) #mean over sequence length
+        kl = kl.sum(-1) / sequence_lengths #mean over sequence length
         
     elif T_reduction == 'sum':
         kl = kl.sum(-1)
@@ -71,7 +71,7 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
     if T_reduction == 'none':
         nll = nll
     elif T_reduction == 'mean':
-        nll = nll.mean(-1) #mean over sequence length
+        nll = nll.sum(-1) / sequence_lengths #mean over sequence length
     elif T_reduction == 'sum':
         nll = nll.sum(-1)
     
