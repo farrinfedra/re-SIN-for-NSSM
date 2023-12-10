@@ -30,9 +30,9 @@ train:
   save_model: True
   save_dir: train
   save_every: 20
-  logger_name: lstm_600_new_annealing_sum_t_dropout #for logger
+  logger_name: lstm_600_new2_annealing_mean_t_dropout #for logger
   experiment_dir: experiments
-  proj_name: lstm_600_new_annealing_sum_t_dropout #for wandb
+  proj_name: lstm_600_new2_annealing_mean_t_dropout #for wandb
   wandb_user_name: farrinsofian #for wandb
 
 test:

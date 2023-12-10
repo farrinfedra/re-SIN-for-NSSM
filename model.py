@@ -308,14 +308,38 @@ class Generator(nn.Module):
     def transition_forward(self, z_hat):
         
         batch_size, seq_len, latent_dim = z_hat.shape
-        z_0 = torch.zeros(batch_size, 1 , latent_dim).to(z_hat.device)
-        z_tm1 = torch.cat([z_0, z_hat[:, :-1,:]], 1)
+        z_0 = torch.zeros(batch_size, 1, latent_dim).to(z_hat.device)
+        z_tm1 = torch.cat([z_0, z_hat[:, :-1, :]], 1)
+
+        mus_accum = []
+        sigmas_accum = []
+
+        for t in range(seq_len):
+            z_prev = z_tm1[:, t, :]  # shape: (batch_size, latent_dim)
+            mu_generator = self.get_mu_tr(z_prev)
+            out = self.H(z_prev)
+            sigma_generator = self.sigma_gated_linear(out)
+
+            mus_accum.append(mu_generator.unsqueeze(1))
+            sigmas_accum.append(sigma_generator.unsqueeze(1))
+
+        mus = torch.cat(mus_accum, dim=1)
+        sigmas = torch.cat(sigmas_accum, dim=1)
+
+        return mus, sigmas
+    
+        ############################NAIVE VERSION#############################################
+        batch_size, seq_len, latent_dim = z_hat.shape
+        # z_0 = torch.zeros(batch_size, 1 , latent_dim).to(z_hat.device)
+        # z_tm1 = torch.cat([z_0, z_hat[:, :-1,:]], 1)
         
-        mu_generator = self.get_mu_tr(z_tm1)
-        out = self.H(z_tm1)
-        sigma_generator = self.sigma_gated_linear(out)
+        # mu_generator = self.get_mu_tr(z_tm1)
+        # out = self.H(z_tm1)
+        # sigma_generator = self.sigma_gated_linear(out)
         
-        return mu_generator, sigma_generator
+        # return mu_generator, sigma_generator
+        ############################NAIVE VERSION#############################################
+        
         ############################PREVIOUS VERSION#############################################
         # z_init = torch.randn(batch_size, 1, latent_dim, device=z_hat.device)  # Initial state
 
