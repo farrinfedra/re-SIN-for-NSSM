@@ -13,33 +13,35 @@ model:
   hidden_dim_em: 100
   hidden_dim_tr: 200
   latent_dim: 100
-  combiner_type: st-lr
+  combiner_type: dks
   rnn_type: lstm
   dropout: 0.0
+  rnn_layers: 1
 train:
-  epochs: 200
+  epochs: 300
   batch_size: 64
   num_workers: 5
   lr: 0.0008
   annealing_epochs: 20
-  annealing: false
+  annealing: true
   save_model: true
-  save_dir: test
+  save_dir: train
   save_every: 20
-  logger_name: lstm_600_st-lr
-  proj_name: lstm_600_st-lr
+  logger_name: lstm_600_new_annealing_20_sum_t
+  experiment_dir: experiments
+  proj_name: lstm_600_new_annealing_20_sum_t
   wandb_user_name: farrinsofian
-  rand: 7406
+  rand: 84796
 test:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: experiments/train_39173/best_model_40.pt
   batch_size: 64
   save_dir: audio_samples
   split: train
   S: 3
 sample:
-  ckpt_path: test_7789/best_model_200.pt
+  ckpt_path: experiments/train_39173/best_model_40.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: st-lr
+  exp_name: new_model
   threshhold: 0.3
   split: train

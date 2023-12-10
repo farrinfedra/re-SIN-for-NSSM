@@ -34,7 +34,7 @@ def setup_logger(config, rand):
 
 def main():
     
-    rand = random.randint(1000, 9999)
+    rand = random.randint(10000, 99999)
     print(f'Random Seed: {rand}')
     
     args = get_arguments()
@@ -89,7 +89,7 @@ def main():
     step_per_epoch = len(tr_dataset) // config.train.batch_size
     total_annealing_steps = step_per_epoch * config.train.annealing_epochs
     annealing_rate = 1.0 / total_annealing_steps 
-    kl_weight = 0.0  # Start with 0 
+    kl_weight = 0.0  # Start with 0  #if beta-vae set this to > 1.0 and turn off the min part in train loop
     
     
     best_model_loss = 100000
@@ -151,9 +151,6 @@ def main():
                         #  "recon_loss_epoch": reconstruction_loss.item(),
                         #  "kl_loss_epoch": kl_loss.item()})
             
-        
-        
-
 
     #validation
         if not args.debug:
@@ -209,12 +206,18 @@ def main():
             best_model = model
             
         if config.train.save_model and epoch % config.train.save_every == 0:
+            
+            os.makedirs(config.train.experiment_dir, exist_ok=True)
             save_dir = f'{config.train.save_dir}_{rand}'
+            save_dir = os.path.join(config.train.experiment_dir, save_dir)
+            
             os.makedirs(save_dir, exist_ok=True)
-            file_name = os.path.join(save_dir, f'best_model_{epoch}.pt')
+            file_name = os.path.join(save_dir, 
+                                        f'best_model_{epoch}.pt')
+            
             torch.save(best_model.state_dict(), file_name)
             logging.info(f'Saved Model at {save_dir}/{file_name}')
-            #save the config file in the folder if it already doesnt exist
+
             if not os.path.exists(os.path.join(save_dir, 'config.yaml')):
                 OmegaConf.save(config, os.path.join(save_dir, 'config.yaml'))
                 logging.info(f'Saved Config at {save_dir}/config.yaml')
