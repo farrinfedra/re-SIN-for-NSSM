@@ -40,7 +40,8 @@ class DVAE(nn.Module):
         self.decoder = Generator(self.hidden_dim_em, 
                                 self.latent_dim, 
                                 self.hidden_dim_tr, 
-                                self.output_dim)
+                                self.output_dim,
+                                self.dropout)
 
     def forward(self, x, sequence_lengths):
         z, mus_inference, sigmas_inference = self.encoder(x, sequence_lengths)
@@ -49,17 +50,19 @@ class DVAE(nn.Module):
 
 
 class DKSCombiner(nn.Module): #DKS
-    def __init__(self, latent_dim, hidden_size):
+    def __init__(self, latent_dim, hidden_size, dropout=0.5):
         super(DKSCombiner, self).__init__()
         
         self.latent_dim = latent_dim
         self.hidden_size = hidden_size
+        self.dropout = dropout
         
 
         self.combiner = torch.nn.Linear(self.latent_dim, 
                                         self.hidden_size)
         self.mu_linear = torch.nn.Linear(self.hidden_size, 
                                             self.latent_dim)
+        self.dropout_layer = nn.Dropout(p=self.dropout)
         self.sigma_linear = torch.nn.Sequential(
                                             torch.nn.Linear(self.hidden_size, 
                                                             self.latent_dim),
@@ -92,7 +95,7 @@ class DKSCombiner(nn.Module): #DKS
         for t in range(1, seq_len + 1):
             z_prev = Z[-1].squeeze(1) #shape: (batch_size, latent_dim)
             
-            h_combined = self.combiner(z_prev)
+            h_combined = self.dropout_layer(self.combiner(z_prev))
             
             if h_right is None:
                 assert h_left is not None
@@ -102,7 +105,7 @@ class DKSCombiner(nn.Module): #DKS
                 assert h_right is not None
                 h_combined = .5 * (F.tanh(h_combined) + h_right[:, t - 1, :])
             else:
-                h_combined = .3 * (F.tanh(h_combined) + h_right[:, t - 1, :] + h_left[:, t - 1, :])
+                h_combined = (1.0 / 3) * (F.tanh(h_combined) + h_right[:, t - 1, :] + h_left[:, t - 1, :])
             
             mu = self.mu_linear(h_combined) #shape: (batch_size, latent_dim)
             var = self.sigma_linear(h_combined)
@@ -121,11 +124,12 @@ class DKSCombiner(nn.Module): #DKS
             
         
 class MeanFieldCombiner(nn.Module): #MF
-    def __init__(self, latent_dim, hidden_size):
+    def __init__(self, latent_dim, hidden_size, dropout=0.5):
         super(MeanFieldCombiner, self).__init__()
         
         self.latent_dim = latent_dim #100
         self.hidden_size = hidden_size #400
+        self.dropout = dropout
         
         self.linear_mu_right = torch.nn.Linear(self.hidden_size, 
                                                 self.latent_dim)
@@ -199,10 +203,10 @@ class Inference(nn.Module):
             
 
         if self.combiner_type == 'dks' or self.combiner_type == 'st-lr' or self.combiner_type == 'st-l':
-            self.combiner = DKSCombiner(self.latent_dim, self.hidden_size)
+            self.combiner = DKSCombiner(self.latent_dim, self.hidden_size, self.dropout)
             
         elif self.combiner_type == 'mf-lr':
-            self.combiner = MeanFieldCombiner(self.latent_dim, self.hidden_size)
+            self.combiner = MeanFieldCombiner(self.latent_dim, self.hidden_size, self.dropout)
         
         else:
             raise NotImplementedError(f'combiner_type: {self.combiner_type} not implemented')
@@ -239,19 +243,22 @@ class Generator(nn.Module):
     def __init__(self,  hidden_dim_em=100, 
                         latent_dim=100, 
                         hidden_dim_tr=200,
-                        output_dim=88
+                        output_dim=88,
+                        dropout=0.5
                         ):
         super(Generator, self).__init__()
         self.hidden_dim_em = hidden_dim_em
         self.latent_dim = latent_dim
         self.hidden_dim_tr = hidden_dim_tr
         self.output_dim = output_dim
+        self.dropout = dropout
         
         self.emission = torch.nn.Sequential(
                     torch.nn.Linear(self.latent_dim, self.hidden_dim_em),
                     torch.nn.ReLU(),
                     torch.nn.Linear(self.hidden_dim_em, self.hidden_dim_em),
                     torch.nn.ReLU(),
+                    torch.nn.Dropout(p=self.dropout),
                     torch.nn.Linear(self.hidden_dim_em, self.output_dim),
                     torch.nn.Sigmoid()
                 )
@@ -275,8 +282,7 @@ class Generator(nn.Module):
         self.sigma_gated_linear = torch.nn.Sequential( #w_{sigma_p} * relu(h_t) + b_{sigma_p}
                                                     torch.nn.ReLU(),
                                                     torch.nn.Linear(self.latent_dim, self.latent_dim),
-                                                    torch.nn.Softplus(),
-                                                )
+                                                    torch.nn.Softplus())
         
         # initialized W as identity matrix and b as zero vector
         for layer in self.mu_gated_linear.children():
@@ -300,34 +306,70 @@ class Generator(nn.Module):
         return mu_generator
         
     def transition_forward(self, z_hat):
+        
         batch_size, seq_len, latent_dim = z_hat.shape
-        z_init = torch.randn(batch_size, 1, latent_dim, device=z_hat.device)  # Initial state
+        z_0 = torch.zeros(batch_size, 1, latent_dim).to(z_hat.device)
+        z_tm1 = torch.cat([z_0, z_hat[:, :-1, :]], 1)
 
-        # Lists to accumulate results for Z, mus, and sigmas
-        Z_accum = [z_init]
         mus_accum = []
         sigmas_accum = []
 
         for t in range(seq_len):
-            
-            z_prev = Z_accum[-1].squeeze(1) #shape: (batch_size, latent_dim)
+            z_prev = z_tm1[:, t, :]  # shape: (batch_size, latent_dim)
             mu_generator = self.get_mu_tr(z_prev)
             out = self.H(z_prev)
             sigma_generator = self.sigma_gated_linear(out)
 
-            z_t = self.sample(mu_generator, sigma_generator).unsqueeze(1)  # Add sequence dimension
-            Z_accum.append(z_t)  # Accumulate the result
-
-            # Accumulate mus and sigmas
             mus_accum.append(mu_generator.unsqueeze(1))
             sigmas_accum.append(sigma_generator.unsqueeze(1))
 
-        # Concatenate along sequence dimension
-        Z = torch.cat(Z_accum, dim=1)
         mus = torch.cat(mus_accum, dim=1)
         sigmas = torch.cat(sigmas_accum, dim=1)
 
         return mus, sigmas
+    
+        ############################NAIVE VERSION#############################################
+        batch_size, seq_len, latent_dim = z_hat.shape
+        # z_0 = torch.zeros(batch_size, 1 , latent_dim).to(z_hat.device)
+        # z_tm1 = torch.cat([z_0, z_hat[:, :-1,:]], 1)
+        
+        # mu_generator = self.get_mu_tr(z_tm1)
+        # out = self.H(z_tm1)
+        # sigma_generator = self.sigma_gated_linear(out)
+        
+        # return mu_generator, sigma_generator
+        ############################NAIVE VERSION#############################################
+        
+        ############################PREVIOUS VERSION#############################################
+        # z_init = torch.randn(batch_size, 1, latent_dim, device=z_hat.device)  # Initial state
+
+        # # Lists to accumulate results for Z, mus, and sigmas
+        # Z_accum = [z_init]
+        # mus_accum = []
+        # sigmas_accum = []
+
+        # for t in range(seq_len):
+            
+        #     z_prev = Z_accum[-1].squeeze(1) #shape: (batch_size, latent_dim)
+        #     mu_generator = self.get_mu_tr(z_prev)
+        #     out = self.H(z_prev)
+        #     sigma_generator = self.sigma_gated_linear(out)
+
+        #     z_t = self.sample(mu_generator, sigma_generator).unsqueeze(1)  # Add sequence dimension
+        #     Z_accum.append(z_t)  # Accumulate the result
+
+        #     # Accumulate mus and sigmas
+        #     mus_accum.append(mu_generator.unsqueeze(1))
+        #     sigmas_accum.append(sigma_generator.unsqueeze(1))
+
+        # # Concatenate along sequence dimension
+        # Z = torch.cat(Z_accum, dim=1)
+        # mus = torch.cat(mus_accum, dim=1)
+        # sigmas = torch.cat(sigmas_accum, dim=1)
+        ############################PREVIOUS VERSION#############################################
+        
+        
+        # return mus, sigmas
     
         
 

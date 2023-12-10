@@ -18,34 +18,34 @@ model:
   combiner_type: 'dks'
   rnn_type: 'lstm'
   dropout: 0.0
-  rnn_layers: 2
+  rnn_layers: 1
 
 train:
-  epochs: 200
+  epochs: 300
   batch_size: 64
   num_workers: 5
   lr: 0.0008 #TODO: adjust this
   annealing_epochs: 20
-  annealing: False
+  annealing: True
   save_model: True
-  save_dir: test
+  save_dir: train
   save_every: 20
-  logger_name: lstm_dks_600
-
-  proj_name: lstm_dks_600 #for wandb
-  wandb_user_name: arghavanrez #for wandb
+  logger_name: lstm_600_new2_annealing_mean_t_dropout #for logger
+  experiment_dir: experiments
+  proj_name: lstm_600_new2_annealing_mean_t_dropout #for wandb
+  wandb_user_name: farrinsofian #for wandb
 
 test:
-  ckpt_path: test_4035/best_model_40.pt
+  ckpt_path: experiments/train_84796/best_model_20.pt
   batch_size: 64 
   save_dir: audio_samples
   split: train
   S: 3
 
 sample:
-  ckpt_path: test_4035/best_model_40.pt
+  ckpt_path: experiments/train_84796/best_model_20.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: 'dks' #for each experiment
+  exp_name: new_model #for each experiment
   threshhold: 0.3
   split: train # this is if you want to sample from the train or test set with no random z

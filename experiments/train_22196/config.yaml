@@ -23,41 +23,25 @@ train:
   num_workers: 5
   lr: 0.0008
   annealing_epochs: 20
-  annealing: false
+  annealing: true
   save_model: true
   save_dir: train
   save_every: 20
-<<<<<<<< HEAD:test_2076/config.yaml
-  logger_name: lstm_dks_600
-  proj_name: lstm_dks_600
-  wandb_user_name: arghavanrez
-  rand: 2076
-test:
-  ckpt_path: test_4035/best_model_40.pt
-========
-  logger_name: lstm_600_new
+  logger_name: lstm_600_new_annealing_20_sum_t_wo_sigmoid
   experiment_dir: experiments
-  proj_name: lstm_600_new
+  proj_name: lstm_600_new_annealing_20_sum_t_wo_sigmoid
   wandb_user_name: farrinsofian
-  rand: 75124
+  rand: 22196
 test:
-  ckpt_path: experiments/train_99260/best_model_140.pt
->>>>>>>> deb8f739fbe5bf71c83a0829f052002af9a73f9c:experiments/train_75124/config.yaml
+  ckpt_path: experiments/train_39173/best_model_40.pt
   batch_size: 64
   save_dir: audio_samples
   split: train
   S: 3
 sample:
-<<<<<<<< HEAD:test_2076/config.yaml
-  ckpt_path: test_4035/best_model_40.pt
+  ckpt_path: experiments/train_39173/best_model_40.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: dks
-========
-  ckpt_path: experiments/train_99260/best_model_140.pt
-  num_samples: 1
-  sequence_length: 40
-  exp_name: beta-vae
->>>>>>>> deb8f739fbe5bf71c83a0829f052002af9a73f9c:experiments/train_75124/config.yaml
+  exp_name: new_model
   threshhold: 0.3
   split: train

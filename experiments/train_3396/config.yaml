@@ -13,51 +13,35 @@ model:
   hidden_dim_em: 100
   hidden_dim_tr: 200
   latent_dim: 100
-  combiner_type: dks
+  combiner_type: st-lr
   rnn_type: lstm
   dropout: 0.0
   rnn_layers: 1
 train:
-  epochs: 300
+  epochs: 200
   batch_size: 64
   num_workers: 5
   lr: 0.0008
   annealing_epochs: 20
-  annealing: false
+  annealing: true
   save_model: true
   save_dir: train
   save_every: 20
-<<<<<<<< HEAD:test_2076/config.yaml
-  logger_name: lstm_dks_600
-  proj_name: lstm_dks_600
-  wandb_user_name: arghavanrez
-  rand: 2076
-test:
-  ckpt_path: test_4035/best_model_40.pt
-========
-  logger_name: lstm_600_new
+  logger_name: lstm_600_st-lr_fixed_rnn_annealing
   experiment_dir: experiments
-  proj_name: lstm_600_new
+  proj_name: lstm_600_st-lr_fixed_rnn_anealing
   wandb_user_name: farrinsofian
-  rand: 75124
+  rand: 3396
 test:
-  ckpt_path: experiments/train_99260/best_model_140.pt
->>>>>>>> deb8f739fbe5bf71c83a0829f052002af9a73f9c:experiments/train_75124/config.yaml
+  ckpt_path: test_4111/best_model_200.pt
   batch_size: 64
   save_dir: audio_samples
   split: train
   S: 3
 sample:
-<<<<<<<< HEAD:test_2076/config.yaml
-  ckpt_path: test_4035/best_model_40.pt
+  ckpt_path: test_4111/best_model_200.pt
   num_samples: 1
   sequence_length: 40
-  exp_name: dks
-========
-  ckpt_path: experiments/train_99260/best_model_140.pt
-  num_samples: 1
-  sequence_length: 40
-  exp_name: beta-vae
->>>>>>>> deb8f739fbe5bf71c83a0829f052002af9a73f9c:experiments/train_75124/config.yaml
+  exp_name: st-lr
   threshhold: 0.3
   split: train

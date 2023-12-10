@@ -56,6 +56,7 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
         log_prob: tensor: (batch,): log probability of each sample
     """
     log_prob = F.binary_cross_entropy(input=logits, target=x, reduction='none') #shape: (batch, seq_len, dim=88)
+    # log_prob = F.binary_cross_entropy_with_logits(input=logits, target=x, reduction='none') #shape: (batch, seq_len, dim=88)
     bs, max_sequence_length, _ = x.shape
     
     range_tensor = repeat(torch.arange(max_sequence_length), 'l -> b l', b=bs).to(sequence_lengths.device) #shape: (batch, seq_len)
@@ -71,7 +72,8 @@ def log_bernoulli_with_logits(x, logits, sequence_lengths, T_reduction='mean'):
     if T_reduction == 'none':
         nll = nll
     elif T_reduction == 'mean':
-        nll = nll.sum(-1) / sequence_lengths #mean over sequence length
+        # nll = nll.mean(-1) #mean over sequence length
+        nll = nll.sum(-1) / sequence_lengths
     elif T_reduction == 'sum':
         nll = nll.sum(-1)
     
@@ -100,12 +102,12 @@ def importance_sampling(model, encodings, sequence_lengths, S):
         #gaussian log prob p(z)
         nll_p_z = F.gaussian_nll_loss(mu_p, z_s, var_p, reduction='none')
         nll_p_z = nll_p_z * mask.float()
-        log_p_z = nll_p_z.sum(-1).mean(-1) #sum over latent dim and T #final shape (batch,)
+        log_p_z = nll_p_z.sum(-1).sum(-1) / sequence_lengths #sum over latent dim and T #final shape (batch,)
         
         #gaussian log prob q(z|x)
         nll_q_z = F.gaussian_nll_loss(mu_q, z_s, var_q, reduction='none')
         nll_q_z = nll_q_z * mask.float()
-        log_q_z = nll_q_z.sum(-1).mean(-1) #sum over latent dim and T #final shape (batch,)
+        log_q_z = nll_q_z.sum(-1).sum(-1) / sequence_lengths #sum over latent dim and T #final shape (batch,)
         
         # loss_s += torch.exp(-(log_s_recosntruction_loss + log_p_z - log_q_z))
         exponent_arg = -(log_s_recosntruction_loss + log_p_z - log_q_z)
